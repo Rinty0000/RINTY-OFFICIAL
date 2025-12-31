@@ -1,2854 +1,993 @@
 <!doctype html>
-<html lang="ja" class="no-js">
+<html lang="ja">
 <head>
-  <!--
-    ===========================================================
-    RINTY OFFICIAL SITE (Single-file / SPA-like Prototype)
-    ===========================================================
-    ✅ HTML / CSS / JavaScript 1ファイル
-    ✅ 画面切り替え型（SPA風 / URL固定）
-    ✅ News（一覧 → 記事詳細）
-    ✅ Schedule（活動スケジュール）
-    ✅ Settings（表示設定 / localStorage）
-    ✅ 控えめなアニメーション（opacity + transform）
-    ✅ レスポンシブ対応
-    ✅ 外部ライブラリ不使用
-    ✅ コメント多め（後から編集しやすい）
-
-    ※完成度は7割を狙った“動く土台”です。
-    ※将来Firebase/Firestoreに差し替えしやすいよう、Repository風の窓口を分離しています。
-  -->
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light dark" />
-
-  <title>RINTY OFFICIAL SITE</title>
-  <meta name="description" content="RINTY 公式サイト。透明感のある音楽と“気配”の物語。News / Schedule / Works / Contact。" />
-
-  <!-- OGP（あとで差し替え） -->
-  <meta property="og:title" content="RINTY OFFICIAL SITE" />
-  <meta property="og:description" content="透明感のある音楽と“気配”の物語。News / Schedule / Works / Contact。" />
-  <meta property="og:type" content="website" />
-  <!-- <meta property="og:image" content="https://example.com/ogp.jpg" /> -->
-  <!-- <meta property="og:url" content="https://example.com/" /> -->
-
-  <!--
-    -----------------------------------------------------------
-    早期適用スクリプト（FOUC対策）
-    - Settings（theme / density / motion / language）を描画前に適用
-    - JS有効フラグもここで付与
-    -----------------------------------------------------------
-  -->
-  <script>
-    (function() {
-      try {
-        document.documentElement.classList.remove('no-js');
-        document.documentElement.classList.add('js');
-
-        const KEY = 'rinty.settings';
-        const raw = localStorage.getItem(KEY);
-        const saved = raw ? JSON.parse(raw) : null;
-
-        const defaults = {
-          schemaVersion: 1,
-          theme: 'light',        // 'light' | 'dark'
-          motion: true,          // true | false
-          density: 'standard',   // 'standard' | 'spacious'
-          language: 'ja'         // 'ja' | 'en' | 'ko' | 'zh-Hans' | 'zh-Hant' | 'ru'
-        };
-
-        const s = Object.assign({}, defaults, saved || {});
-
-        // 1) Theme
-        if (s.theme === 'dark') document.documentElement.classList.add('theme-dark');
-
-        // 2) Density
-        if (s.density === 'spacious') document.documentElement.classList.add('density-spacious');
-
-        // 3) Motion
-        if (s.motion === false) document.documentElement.classList.add('motion-off');
-
-        // 4) Language
-        document.documentElement.setAttribute('data-lang', s.language || 'ja');
-      } catch (e) {
-        // localStorageが使えない/壊れている場合は何もしない（安全に既定で表示）
-      }
-    })();
-  </script>
-
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="color-scheme" content="dark"/>
+  <title>WEB SITE 公開カウントダウン（OFFLINE / OBS対応）</title>
   <style>
-    /* ==========================================================================
-      0) Design Tokens / 基本方針
-      - 白〜霧グレー基調 + アクセント1色（Mist Green）
-      - 余白重視・透明感・静けさ
-      - 公式感：可読性・整列・控えめな動き
-    ========================================================================== */
-
     :root{
-      /* Accent (Main) - Mist Green */
-      --accent: #76B7A7;
-      --accent-ink: #0D2B26;
-      --accent-soft: rgba(118,183,167,.12);
-      --accent-line: rgba(118,183,167,.55);
-
-      /* Light theme defaults */
-      --bg: #F7F8F8;               /* オフホワイト */
-      --surface: #FFFFFF;          /* 白 */
-      --text: #14181D;             /* インクブラック */
-      --muted: #6B737B;            /* サブ文字 */
-      --line: rgba(20,24,29,.10);  /* ヘアライン */
-      --shadow: rgba(30,45,60,.10);
-
-      /* Layout */
-      --container: 1080px;
-
-      /* Density（標準） */
-      --gutter: 20px;
-      --section-pad: clamp(56px, 7vw, 96px);
-      --section-pad-tight: clamp(44px, 6vw, 80px);
-      --gap: 18px;
-
-      /* Radius */
-      --radius: 16px;
-
-      /* Type */
-      --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-                   "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP",
-                   "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
-      --font-serif: ui-serif, "Times New Roman", "Noto Serif JP", serif;
-
-      /* Motion（統一：クセの強い動き禁止） */
-      --ease-out: cubic-bezier(.2,.8,.2,1);
-      --t-fast: 160ms;
-      --t-base: 360ms;
-      --t-slow: 520ms;
+      --hud: rgba(255,255,255,.93);
+      --hud-dim: rgba(255,255,255,.58);
+      --panel: rgba(10,10,18,.55);
+      --panel-brd: rgba(255,255,255,.16);
+      --shadow: 0 0 18px rgba(160,220,255,.18), 0 0 70px rgba(120,190,255,.16);
     }
-
-    /* ダークテーマ（暗すぎない / 霧のような暗さ） */
-    html.theme-dark{
-      --bg: #0E1416;
-      --surface: #111B1D;
-      --text: rgba(233,239,241,.92);
-      --muted: rgba(233,239,241,.62);
-      --line: rgba(233,239,241,.12);
-      --shadow: rgba(0,0,0,.30);
-
-      /* accentはそのまま使うが、面積は小さく */
-      --accent-soft: rgba(118,183,167,.16);
-      --accent-line: rgba(118,183,167,.65);
-    }
-
-    /* 余白多め（密度切替） */
-    html.density-spacious{
-      --gutter: 24px;
-      --section-pad: clamp(64px, 8vw, 112px);
-      --section-pad-tight: clamp(52px, 7vw, 92px);
-      --gap: 22px;
-    }
-
-    /* アニメOFF（Setting） */
-    html.motion-off{
-      --t-fast: 0ms;
-      --t-base: 0ms;
-      --t-slow: 0ms;
-    }
-
-    /* ==========================================================================
-      1) Base / Reset
-    ========================================================================== */
-    *{ box-sizing: border-box; }
-    html{ scroll-behavior: smooth; }
+    html,body{height:100%; margin:0; overflow:hidden; background:#000;}
     body{
-      margin: 0;
-      font-family: var(--font-sans);
-      color: var(--text);
-      background: var(--bg);
-      line-height: 1.7;
-    }
-
-    /* JS有効時だけ、全体を静かにフェードイン */
-    html.js body{
-      opacity: 0;
-      transition: opacity var(--t-base) var(--ease-out);
-    }
-    html.js body.is-ready{ opacity: 1; }
-
-    img{ max-width: 100%; height: auto; display: block; }
-    a{ color: inherit; text-decoration: none; }
-    button{ font: inherit; }
-
-    :focus-visible{
-      outline: 2px solid var(--accent);
-      outline-offset: 3px;
-      border-radius: 10px;
-    }
-
-    .skip-link{
-      position:absolute;
-      left:-9999px;
-      top:12px;
-      padding:10px 12px;
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      box-shadow: 0 8px 30px var(--shadow);
-      z-index: 9999;
-    }
-    .skip-link:focus{ left: 12px; }
-
-    .container{
-      width: min(var(--container), 100%);
-      margin-inline: auto;
-      padding-inline: var(--gutter);
-    }
-
-    h1,h2,h3{ margin:0; line-height:1.25; letter-spacing:.02em; }
-    p{ margin:0; color: var(--muted); }
-
-    .kicker{
-      font-size: 12px;
-      letter-spacing: .18em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    /* ==========================================================================
-      2) Header / Navigation（SPA風：Home / News / Schedule / Settings）
-    ========================================================================== */
-    .site-header{
-      position: sticky;
-      top: 0;
-      z-index: 50;
-
-      background: rgba(247,248,248,.78);
-      border-bottom: 1px solid rgba(20,24,29,.08);
-      backdrop-filter: blur(10px);
-    }
-    html.theme-dark .site-header{
-      background: rgba(14,20,22,.68);
-      border-bottom-color: rgba(233,239,241,.10);
-    }
-
-    .header-inner{
-      height: clamp(60px, 7vw, 84px);
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 14px;
-    }
-
-    .brand{
-      display:inline-flex;
-      align-items: baseline;
-      gap: 10px;
-      padding: 6px 8px;
-      border-radius: 12px;
-    }
-    .brand__mark{ font-weight: 650; letter-spacing: .08em; }
-    .brand__sub{ font-size: 12px; letter-spacing: .22em; color: var(--muted); }
-
-    /* PCナビ */
-    .site-nav{ display:none; }
-    .site-nav ul{
-      list-style: none;
-      display:flex;
-      align-items:center;
-      gap: 22px;
-      margin:0;
-      padding:0;
-    }
-    .site-nav a,
-    .site-nav button{
-      position: relative;
-      font-size: 14px;
-      color: rgba(20,24,29,.86);
-      padding: 10px 2px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      transition: opacity var(--t-fast) var(--ease-out);
-    }
-    html.theme-dark .site-nav a,
-    html.theme-dark .site-nav button{
-      color: rgba(233,239,241,.86);
-    }
-    .site-nav a:hover,
-    .site-nav button:hover{ opacity: .72; }
-
-    /* ナビ下線（控えめ） */
-    .site-nav a::after{
-      content:"";
-      position:absolute;
-      left:0; right:0; bottom: 7px;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
-      opacity: 0;
-      transform: translateY(2px);
-      transition: opacity var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out);
-    }
-    .site-nav a[aria-current="page"]::after,
-    .site-nav a:hover::after{
-      opacity: .7;
-      transform: translateY(0);
-    }
-
-    /* Mobile: menu button */
-    .nav-toggle{
-      display:inline-flex;
-      align-items:center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.70);
-      cursor:pointer;
-      transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
-    }
-    html.theme-dark .nav-toggle{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.72);
-    }
-    .nav-toggle:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.92);
-    }
-    html.theme-dark .nav-toggle:hover{
-      background: rgba(17,27,29,.92);
-    }
-    .nav-toggle__icon{
-      width: 18px; height: 12px;
-      position: relative;
-      display: inline-block;
-    }
-    .nav-toggle__icon span{
-      position:absolute;
-      left:0; right:0;
-      height: 1px;
-      background: rgba(20,24,29,.70);
-    }
-    html.theme-dark .nav-toggle__icon span{
-      background: rgba(233,239,241,.70);
-    }
-    .nav-toggle__icon span:nth-child(1){ top: 0; }
-    .nav-toggle__icon span:nth-child(2){ top: 50%; transform: translateY(-50%); }
-    .nav-toggle__icon span:nth-child(3){ bottom: 0; }
-
-    /* Mobile drawer */
-    .nav-overlay{
-      position: fixed;
-      inset: 0;
-      background: rgba(20,24,29,.25);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity var(--t-base) var(--ease-out);
-      z-index: 60;
-    }
-    .nav-drawer{
-      position: fixed;
-      top: 12px;
-      left: 12px;
-      right: 12px;
-      max-width: 560px;
-      margin-inline: auto;
-      background: rgba(255,255,255,.92);
-      border: 1px solid rgba(20,24,29,.12);
-      border-radius: 18px;
-      box-shadow: 0 22px 70px rgba(30,45,60,.18);
-      padding: 14px;
-      transform: translateY(-10px);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity var(--t-base) var(--ease-out), transform var(--t-base) var(--ease-out);
-      z-index: 70;
-      backdrop-filter: blur(10px);
-    }
-    html.theme-dark .nav-drawer{
-      background: rgba(17,27,29,.92);
-      border-color: rgba(233,239,241,.12);
-    }
-    .nav-drawer__head{
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      padding: 6px 6px 10px 6px;
-    }
-    .nav-drawer__title{
-      font-size: 12px;
-      letter-spacing: .18em;
-      color: var(--muted);
-    }
-    .nav-close{
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.75);
-      padding: 10px 12px;
-      border-radius: 14px;
-      cursor:pointer;
-      transition: transform var(--t-fast) var(--ease-out);
-    }
-    html.theme-dark .nav-close{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.72);
-      color: rgba(233,239,241,.88);
-    }
-    .nav-close:hover{ transform: translateY(-1px); }
-
-    .nav-drawer nav ul{
-      list-style:none;
-      padding: 8px;
-      margin: 0;
-      display: grid;
-      gap: 6px;
-    }
-    .nav-drawer nav a,
-    .nav-drawer nav button{
-      display:flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      padding: 14px 12px;
-      border-radius: 14px;
-      border: 1px solid transparent;
-      color: rgba(20,24,29,.88);
-      background: transparent;
-      cursor:pointer;
-      transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
-      text-align: left;
-    }
-    html.theme-dark .nav-drawer nav a,
-    html.theme-dark .nav-drawer nav button{
-      color: rgba(233,239,241,.88);
-    }
-    .nav-drawer nav a:hover,
-    .nav-drawer nav button:hover{
-      background: var(--accent-soft);
-      border-color: rgba(118,183,167,.22);
-      transform: translateY(-1px);
-    }
-    .nav-drawer nav a span,
-    .nav-drawer nav button span{
-      color: var(--muted);
-      font-size: 12px;
-      letter-spacing: .08em;
-    }
-
-    body.nav-open .nav-overlay{
-      opacity: 1;
-      pointer-events: auto;
-    }
-    body.nav-open .nav-drawer{
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
-    }
-
-    /* ==========================================================================
-      3) SPA-like Views
-    ========================================================================== */
-    .view{
-      padding-block: var(--section-pad);
-      scroll-margin-top: 96px;
-    }
-    html.js .view[hidden]{ display: none; }
-
-    /* ビュー表示の“入場”だけ静かに */
-    html.js .view.is-enter{
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    html.js .view{
-      opacity: 1;
-      transform: translateY(0);
-      transition: opacity var(--t-base) var(--ease-out), transform var(--t-base) var(--ease-out);
-    }
-
-    /* ==========================================================================
-      4) Hero (Home)
-    ========================================================================== */
-    .hero{
-      position: relative;
-      padding-block: clamp(42px, 6vw, 68px);
-      min-height: min(86vh, 860px);
-      display: grid;
-      align-items: center;
-      overflow: clip;
-    }
-    .hero::before{
-      content:"";
-      position:absolute;
-      inset: -20%;
-      background:
-        radial-gradient(600px 420px at 20% 20%, rgba(118,183,167,.20), transparent 60%),
-        radial-gradient(520px 380px at 75% 30%, rgba(30,45,60,.10), transparent 62%),
-        radial-gradient(560px 420px at 55% 85%, rgba(118,183,167,.10), transparent 60%);
-      filter: blur(6px);
-      opacity: .65;
-      pointer-events: none;
-    }
-    html.theme-dark .hero::before{
-      opacity: .55;
-      filter: blur(7px);
-    }
-
-    .hero__inner{
-      position: relative;
-      display:grid;
-      gap: 18px;
-      padding-block: clamp(26px, 4vw, 44px);
-    }
-    .hero__title{
-      font-size: clamp(28px, 4.2vw, 48px);
-      letter-spacing: .04em;
-      color: rgba(20,24,29,.92);
-    }
-    html.theme-dark .hero__title{ color: rgba(233,239,241,.92); }
-
-    .hero__lead{
-      font-size: clamp(14px, 1.8vw, 16px);
-      max-width: 60ch;
-      color: rgba(20,24,29,.62);
-    }
-    html.theme-dark .hero__lead{ color: rgba(233,239,241,.62); }
-
-    .hero__actions{
-      display:flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-top: 6px;
-    }
-
-    /* Button（色面積は控えめ） */
-    .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap: 10px;
-      padding: 12px 16px;
-      border-radius: 999px;
-      border: 1px solid rgba(20,24,29,.12);
-      background: rgba(255,255,255,.72);
-      color: rgba(20,24,29,.88);
-      transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+      font-family: system-ui,-apple-system,"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
       user-select:none;
-      cursor:pointer;
-    }
-    html.theme-dark .btn{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.72);
-      color: rgba(233,239,241,.88);
-    }
-    .btn:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.92);
-    }
-    html.theme-dark .btn:hover{ background: rgba(17,27,29,.92); }
-    .btn:active{ transform: translateY(1px); }
-
-    .btn--primary{
-      border-color: var(--accent-line);
-      background: var(--accent-soft);
-      color: var(--accent-ink);
-    }
-    html.theme-dark .btn--primary{
-      color: rgba(233,239,241,.90);
-    }
-    .btn--primary:hover{
-      background: rgba(118,183,167,.18);
-    }
-    .btn--ghost{
-      border-color: rgba(20,24,29,.10);
-      background: rgba(255,255,255,.60);
-    }
-    html.theme-dark .btn--ghost{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.60);
     }
 
-    .hero__latest{
-      display:inline-flex;
-      align-items:center;
-      gap: 10px;
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.60);
-      width: fit-content;
+    #stage{
+      position:fixed; inset:0;
+      transform: translate3d(0,0,0);
+      will-change: transform;
     }
-    html.theme-dark .hero__latest{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.60);
+    #bg{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      display:block;
     }
 
-    .label{
-      font-size: 12px;
-      letter-spacing: .14em;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(118,183,167,.28);
-      background: rgba(118,183,167,.08);
-      color: rgba(13,43,38,.85);
-      white-space: nowrap;
-    }
-
-    .hero__latest button{
-      background: none;
-      border: none;
-      padding: 0;
-      cursor: pointer;
-      text-align: left;
-      font-size: 14px;
-      color: rgba(20,24,29,.82);
-      border-bottom: 1px solid rgba(118,183,167,.35);
-      padding-bottom: 2px;
-      transition: opacity var(--t-fast) var(--ease-out);
-    }
-    html.theme-dark .hero__latest button{ color: rgba(233,239,241,.82); }
-    .hero__latest button:hover{ opacity: .72; }
-
-    /* ==========================================================================
-      5) Common Section Head / Components
-    ========================================================================== */
-    .section__head{
-      display:flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 22px;
-    }
-    .section__title{
-      font-size: clamp(18px, 2.4vw, 24px);
-      letter-spacing: .08em;
-    }
-    .section__desc{
-      font-size: 13px;
-      color: rgba(20,24,29,.55);
-      max-width: 56ch;
-    }
-    html.theme-dark .section__desc{ color: rgba(233,239,241,.55); }
-
-    .text-link{
-      font-size: 13px;
-      color: rgba(20,24,29,.72);
-      border-bottom: 1px solid rgba(118,183,167,.35);
-      padding-bottom: 2px;
-      white-space: nowrap;
-      background: none;
-      border-left: none;
-      border-right: none;
-      border-top: none;
-      cursor: pointer;
-      transition: opacity var(--t-fast) var(--ease-out);
-    }
-    html.theme-dark .text-link{ color: rgba(233,239,241,.72); }
-    .text-link:hover{ opacity: .70; }
-
-    .panel{
-      border-radius: var(--radius);
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.70);
-      overflow: hidden;
-      box-shadow: 0 10px 40px rgba(30,45,60,.06);
-    }
-    html.theme-dark .panel{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.76);
-      box-shadow: 0 10px 40px rgba(0,0,0,.18);
-    }
-
-    /* Row list（ニュース/スケジュールで共通） */
-    .row{
-      display:grid;
-      gap: 8px;
-      padding: 16px 16px;
-      border-top: 1px solid rgba(20,24,29,.10);
-    }
-    html.theme-dark .row{ border-top-color: rgba(233,239,241,.12); }
-    .row:first-child{ border-top: none; }
-
-    .meta-row{
-      display:inline-flex;
-      align-items:center;
-      gap: 10px;
-      font-size: 12px;
-      letter-spacing: .06em;
-      color: rgba(20,24,29,.55);
-    }
-    html.theme-dark .meta-row{ color: rgba(233,239,241,.55); }
-
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      padding: 4px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.70);
-      color: rgba(20,24,29,.65);
-      font-size: 11px;
-      letter-spacing: .12em;
-      white-space: nowrap;
-    }
-    html.theme-dark .badge{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.72);
-      color: rgba(233,239,241,.65);
-    }
-    .badge--accent{
-      border-color: rgba(118,183,167,.25);
-      background: rgba(118,183,167,.08);
-      color: rgba(13,43,38,.76);
-    }
-    html.theme-dark .badge--accent{ color: rgba(233,239,241,.76); }
-
-    .row-btn{
-      width: 100%;
-      border: none;
-      background: none;
-      padding: 0;
-      text-align: left;
-      cursor: pointer;
-    }
-    .row-title{
-      display:inline-block;
-      width: fit-content;
-      color: rgba(20,24,29,.88);
-      font-size: 14px;
-      border-bottom: 1px solid rgba(118,183,167,.20);
-      padding-bottom: 2px;
-      transition: opacity var(--t-fast) var(--ease-out);
-    }
-    html.theme-dark .row-title{ color: rgba(233,239,241,.88); }
-    .row-btn:hover .row-title{ opacity: .72; }
-
-    .row-excerpt{
-      font-size: 13px;
-      color: rgba(20,24,29,.58);
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    html.theme-dark .row-excerpt{ color: rgba(233,239,241,.58); }
-
-    /* ==========================================================================
-      6) Home: Latest preview grid
-    ========================================================================== */
-    .two-col{
-      display: grid;
-      gap: var(--gap);
-    }
-    .subhead{
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 14px 16px;
-      border-bottom: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.78);
-    }
-    html.theme-dark .subhead{
-      border-bottom-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.88);
-    }
-
-    .subhead h3{
-      font-size: 14px;
-      letter-spacing: .10em;
-      color: rgba(20,24,29,.84);
-    }
-    html.theme-dark .subhead h3{ color: rgba(233,239,241,.84); }
-
-    .subhead small{
-      font-size: 12px;
-      color: rgba(20,24,29,.50);
-    }
-    html.theme-dark .subhead small{ color: rgba(233,239,241,.50); }
-
-    /* ==========================================================================
-      7) Works Cards（Home）
-    ========================================================================== */
-    .grid{ display:grid; gap: var(--gap); }
-    .works-grid{ grid-template-columns: 1fr; }
-
-    .card{
-      border-radius: var(--radius);
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.74);
-      overflow: hidden;
-      box-shadow: 0 10px 40px rgba(30,45,60,.06);
-      transition: transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out);
-    }
-    html.theme-dark .card{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.76);
-      box-shadow: 0 10px 40px rgba(0,0,0,.18);
-    }
-    .card:hover{
-      transform: translateY(-2px);
-      box-shadow: 0 14px 60px rgba(30,45,60,.10);
-    }
-    html.theme-dark .card:hover{
-      box-shadow: 0 14px 60px rgba(0,0,0,.24);
-    }
-
-    .card__media{
-      aspect-ratio: 16 / 9;
-      position: relative;
+    /* overlays */
+    #vignette{
+      position:absolute; inset:0;
+      pointer-events:none;
+      z-index:2;
       background:
-        radial-gradient(650px 400px at 30% 30%, rgba(118,183,167,.25), transparent 60%),
-        radial-gradient(520px 380px at 70% 65%, rgba(30,45,60,.16), transparent 62%),
-        linear-gradient(180deg, rgba(255,255,255,.52), transparent);
-      border-bottom: 1px solid rgba(20,24,29,.08);
+        radial-gradient(1200px 620px at 50% 52%, rgba(120,190,255,.10), transparent 60%),
+        radial-gradient(900px 420px at 55% 40%, rgba(200,120,255,.08), transparent 60%),
+        radial-gradient(760px 380px at 40% 65%, rgba(120,255,220,.06), transparent 65%),
+        radial-gradient(1600px 900px at 50% 50%, transparent 55%, rgba(0,0,0,.58) 85%, rgba(0,0,0,.88) 100%);
+      mix-blend-mode: screen;
+      opacity:.92;
+      transition: opacity .2s linear;
     }
-    html.theme-dark .card__media{
+    #scanlines{
+      position:absolute; inset:0;
+      pointer-events:none;
+      z-index:4;
       background:
-        radial-gradient(650px 400px at 30% 30%, rgba(118,183,167,.18), transparent 60%),
-        radial-gradient(520px 380px at 70% 65%, rgba(0,0,0,.22), transparent 62%),
-        linear-gradient(180deg, rgba(255,255,255,.04), transparent);
-      border-bottom-color: rgba(233,239,241,.12);
+        repeating-linear-gradient(
+          to bottom,
+          rgba(255,255,255,.03),
+          rgba(255,255,255,.03) 1px,
+          rgba(0,0,0,0) 3px,
+          rgba(0,0,0,0) 6px
+        );
+      opacity:.08;
     }
-    .card__tag{
+    #flash{
+      position:absolute; inset:0;
+      pointer-events:none;
+      z-index:5;
+      background: radial-gradient(900px 520px at 50% 50%, rgba(255,255,255,1), rgba(255,255,255,0) 65%);
+      opacity:0;
+      transition: opacity .10s linear;
+      mix-blend-mode: screen;
+      filter: blur(1px);
+    }
+
+    /* HUD */
+    #hud{
       position:absolute;
-      top: 12px; left: 12px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      letter-spacing: .14em;
-      border: 1px solid rgba(255,255,255,.55);
-      background: rgba(255,255,255,.55);
-      color: rgba(20,24,29,.70);
-      backdrop-filter: blur(8px);
+      left:50%; top:50%;
+      transform:translate(-50%,-50%);
+      text-align:center;
+      color:var(--hud);
+      pointer-events:none;
+      z-index:3;
+      transition: opacity .35s ease, transform .35s ease;
+      padding: 14px 18px;
     }
-    html.theme-dark .card__tag{
-      border-color: rgba(233,239,241,.18);
-      background: rgba(17,27,29,.55);
-      color: rgba(233,239,241,.70);
+    .title{
+      font-weight:900;
+      letter-spacing:.24em;
+      text-transform:uppercase;
+      font-size:20px;
+      text-shadow: var(--shadow);
+      opacity:.96;
+      white-space:nowrap;
     }
-    .card__body{
-      padding: 16px 16px 18px 16px;
-      display:grid;
-      gap: 8px;
+    .subtitle{
+      margin-top:10px;
+      color:var(--hud-dim);
+      letter-spacing:.16em;
+      font-size:13px;
+      text-shadow: var(--shadow);
+      white-space:nowrap;
     }
-    .card__title{
-      font-size: 16px;
-      letter-spacing: .03em;
-      color: rgba(20,24,29,.92);
-    }
-    html.theme-dark .card__title{ color: rgba(233,239,241,.92); }
-
-    .card__meta{
-      font-size: 12px;
-      color: rgba(20,24,29,.55);
-      letter-spacing: .08em;
-    }
-    html.theme-dark .card__meta{ color: rgba(233,239,241,.55); }
-
-    .card__desc{
-      font-size: 13px;
-      color: rgba(20,24,29,.58);
-    }
-    html.theme-dark .card__desc{ color: rgba(233,239,241,.58); }
-
-    /* ==========================================================================
-      8) About / Links / Contact CTA（Home）
-    ========================================================================== */
-    .about{
-      display:grid;
-      gap: var(--gap);
-      align-items: start;
-    }
-    .about__box{
-      border-radius: var(--radius);
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.68);
-      padding: 18px;
-    }
-    html.theme-dark .about__box{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.72);
-    }
-
-    .about__lead{
-      color: rgba(20,24,29,.68);
-      max-width: 62ch;
-    }
-    html.theme-dark .about__lead{ color: rgba(233,239,241,.68); }
-
-    .tag-row{
-      margin-top: 14px;
+    .row{
       display:flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      justify-content:center;
+      align-items:flex-end;
+      gap:22px;
+      margin-top:18px;
     }
-    .pill{
-      display:inline-flex;
-      align-items:center;
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.72);
-      font-size: 12px;
-      letter-spacing: .06em;
-      color: rgba(20,24,29,.70);
+    .block{min-width:126px; perspective: 900px;}
+    .num{
+      font-size:74px;
+      line-height:1;
+      font-weight:950;
+      letter-spacing:.06em;
+      text-shadow: var(--shadow);
+      transform-style: preserve-3d;
+      transform: translateZ(0);
+      filter: drop-shadow(0 0 18px rgba(130,200,255,.25));
     }
-    html.theme-dark .pill{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.72);
-      color: rgba(233,239,241,.70);
+    .num.flip{
+      animation: flip .46s cubic-bezier(.2,.75,.1,1);
     }
-
-    .about__visual{
-      border-radius: var(--radius);
-      border: 1px solid rgba(20,24,29,.10);
-      background:
-        radial-gradient(650px 420px at 20% 35%, rgba(118,183,167,.25), transparent 60%),
-        radial-gradient(520px 380px at 75% 70%, rgba(30,45,60,.12), transparent 62%),
-        linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.08));
-      min-height: 220px;
-      overflow: hidden;
-      position: relative;
+    @keyframes flip{
+      0%   { transform: translateZ(0) rotateX(0deg) scale(1);   filter: drop-shadow(0 0 18px rgba(130,200,255,.25)); }
+      45%  { transform: translateZ(0) rotateX(-70deg) scale(1.04); filter: drop-shadow(0 0 30px rgba(255,255,255,.35)); }
+      100% { transform: translateZ(0) rotateX(0deg) scale(1);   filter: drop-shadow(0 0 20px rgba(130,200,255,.25)); }
     }
-    html.theme-dark .about__visual{
-      border-color: rgba(233,239,241,.12);
-      background:
-        radial-gradient(650px 420px at 20% 35%, rgba(118,183,167,.18), transparent 60%),
-        radial-gradient(520px 380px at 75% 70%, rgba(0,0,0,.18), transparent 62%),
-        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+    .label{
+      margin-top:8px;
+      font-size:12px;
+      letter-spacing:.34em;
+      color:var(--hud-dim);
+      text-transform:uppercase;
+      text-shadow: var(--shadow);
     }
-
-    .links{ display:grid; gap: 10px; }
-    .link-item{
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      padding: 14px 14px;
-      border-radius: 14px;
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.70);
-      transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+    #status{
+      margin-top:14px;
+      font-size:13px;
+      color:var(--hud-dim);
+      letter-spacing:.1em;
+      text-shadow: var(--shadow);
     }
-    html.theme-dark .link-item{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.72);
-    }
-    .link-item:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.92);
-    }
-    html.theme-dark .link-item:hover{ background: rgba(17,27,29,.92); }
-
-    .link-item strong{
-      font-size: 14px;
-      letter-spacing: .02em;
-      color: rgba(20,24,29,.88);
-      font-weight: 600;
-    }
-    html.theme-dark .link-item strong{ color: rgba(233,239,241,.88); }
-
-    .link-item span{
-      font-size: 12px;
-      color: rgba(20,24,29,.50);
-      letter-spacing: .08em;
-    }
-    html.theme-dark .link-item span{ color: rgba(233,239,241,.50); }
-
-    .cta{
-      border-radius: calc(var(--radius) + 2px);
-      border: 1px solid rgba(118,183,167,.22);
-      background: linear-gradient(180deg, rgba(118,183,167,.10), rgba(255,255,255,.55));
-      padding: clamp(18px, 3vw, 26px);
-      display:grid;
-      gap: 12px;
-      align-items: start;
-    }
-    html.theme-dark .cta{
-      background: linear-gradient(180deg, rgba(118,183,167,.10), rgba(17,27,29,.72));
-    }
-    .cta p{ color: rgba(20,24,29,.62); max-width: 70ch; }
-    html.theme-dark .cta p{ color: rgba(233,239,241,.62); }
-    .cta .note{ font-size: 12px; color: rgba(20,24,29,.48); }
-    html.theme-dark .cta .note{ color: rgba(233,239,241,.48); }
-
-    /* ==========================================================================
-      9) News View（一覧 / 詳細）
-    ========================================================================== */
-    .news-layout{
-      display: grid;
-      gap: var(--gap);
+    #debug{
+      margin-top:10px;
+      font-size:11px;
+      color: rgba(255,255,255,.42);
+      letter-spacing:.06em;
+      text-shadow: var(--shadow);
     }
 
-    .news-detail{
-      border-radius: var(--radius);
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.72);
-      padding: 18px;
+    /* Launch overlay text */
+    #launch{
+      position:absolute;
+      left:50%; top:50%;
+      transform: translate(-50%,-50%) scale(1.15);
+      text-align:center;
+      z-index:3;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .5s ease, transform .7s cubic-bezier(.2,.9,.1,1);
     }
-    html.theme-dark .news-detail{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.76);
+    #launch.show{
+      opacity:1;
+      transform: translate(-50%,-50%) scale(1.0);
     }
-
-    .news-detail__head{
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 14px;
+    .launchHead{
+      font-weight:950;
+      letter-spacing:.22em;
+      font-size:64px;
+      color: rgba(255,255,255,.97);
+      text-shadow: 0 0 25px rgba(160,220,255,.22), 0 0 95px rgba(120,190,255,.20);
+      filter: drop-shadow(0 0 28px rgba(140,210,255,.22));
+      white-space:nowrap;
     }
-
-    .back-btn{
-      display:inline-flex;
-      align-items:center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.70);
-      cursor:pointer;
-      transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
+    .launchSub{
+      margin-top:12px;
+      font-weight:800;
+      letter-spacing:.16em;
+      font-size:14px;
+      color: rgba(255,255,255,.64);
+      text-shadow: 0 0 25px rgba(160,220,255,.18), 0 0 80px rgba(120,190,255,.12);
+      white-space:nowrap;
     }
-    html.theme-dark .back-btn{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.72);
-      color: rgba(233,239,241,.88);
-    }
-    .back-btn:hover{
-      transform: translateY(-1px);
-      background: rgba(255,255,255,.92);
-    }
-    html.theme-dark .back-btn:hover{ background: rgba(17,27,29,.92); }
-    .back-btn:active{ transform: translateY(1px); }
-
-    .article{
-      max-width: 72ch;
-      margin-inline: auto;
-      padding-block: 8px;
-    }
-    .article h1{
-      font-size: clamp(20px, 3vw, 28px);
-      letter-spacing: .03em;
-      color: rgba(20,24,29,.92);
-      margin-bottom: 10px;
-    }
-    html.theme-dark .article h1{ color: rgba(233,239,241,.92); }
-
-    .article .article-meta{
-      display:flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items:center;
-      margin-bottom: 14px;
-      color: rgba(20,24,29,.55);
-      font-size: 12px;
-      letter-spacing: .06em;
-    }
-    html.theme-dark .article .article-meta{ color: rgba(233,239,241,.55); }
-
-    .article .article-excerpt{
-      color: rgba(20,24,29,.62);
-      margin-bottom: 18px;
-    }
-    html.theme-dark .article .article-excerpt{ color: rgba(233,239,241,.62); }
-
-    .article .article-body{
-      display: grid;
-      gap: 14px;
-    }
-    .article .article-body p{
-      color: rgba(20,24,29,.70);
-    }
-    html.theme-dark .article .article-body p{ color: rgba(233,239,241,.70); }
-
-    .article .article-body h2{
-      margin-top: 14px;
-      font-size: 16px;
-      letter-spacing: .06em;
-      color: rgba(20,24,29,.88);
-    }
-    html.theme-dark .article .article-body h2{ color: rgba(233,239,241,.88); }
-
-    .article .article-body ul{
-      margin: 0;
-      padding-left: 1.2em;
-      color: rgba(20,24,29,.70);
-    }
-    html.theme-dark .article .article-body ul{ color: rgba(233,239,241,.70); }
-    .article .article-body li{ margin: 6px 0; }
-
-    .article .article-actions{
-      margin-top: 22px;
-      display:flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    /* ==========================================================================
-      10) Schedule View
-    ========================================================================== */
-    .filters{
-      display:flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items:center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-    .segmented{
-      display:inline-flex;
-      border-radius: 999px;
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.66);
-      overflow: hidden;
-    }
-    html.theme-dark .segmented{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.66);
-    }
-    .segmented button{
-      border: none;
-      background: transparent;
-      padding: 10px 12px;
-      cursor: pointer;
-      font-size: 13px;
-      color: rgba(20,24,29,.72);
-      transition: background var(--t-fast) var(--ease-out), color var(--t-fast) var(--ease-out);
-    }
-    html.theme-dark .segmented button{ color: rgba(233,239,241,.72); }
-    .segmented button[aria-pressed="true"]{
-      background: var(--accent-soft);
-      color: rgba(20,24,29,.86);
-    }
-    html.theme-dark .segmented button[aria-pressed="true"]{
-      color: rgba(233,239,241,.86);
-    }
-
-    .empty{
-      padding: 18px;
-      color: rgba(20,24,29,.58);
-      font-size: 13px;
-    }
-    html.theme-dark .empty{ color: rgba(233,239,241,.58); }
-
-    /* ==========================================================================
-      11) Settings Drawer（右からスライド / URL固定）
-    ========================================================================== */
-    .settings-overlay{
-      position: fixed;
-      inset: 0;
-      background: rgba(20,24,29,.28);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity var(--t-base) var(--ease-out);
-      z-index: 80;
-    }
-
-    .settings-drawer{
-      position: fixed;
-      top: 0;
-      right: 0;
-      height: 100vh;
-      width: min(420px, 92vw);
-      background: rgba(255,255,255,.92);
-      border-left: 1px solid rgba(20,24,29,.10);
-      box-shadow: -20px 0 60px rgba(0,0,0,.12);
-      transform: translateX(16px);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity var(--t-base) var(--ease-out), transform var(--t-base) var(--ease-out);
-      z-index: 90;
-      backdrop-filter: blur(10px);
-    }
-    html.theme-dark .settings-drawer{
-      background: rgba(17,27,29,.92);
-      border-left-color: rgba(233,239,241,.12);
-    }
-
-    body.settings-open .settings-overlay{
-      opacity: 1;
-      pointer-events: auto;
-    }
-    body.settings-open .settings-drawer{
-      opacity: 1;
-      transform: translateX(0);
-      pointer-events: auto;
-    }
-
-    .settings-inner{
-      height: 100%;
-      display:flex;
-      flex-direction: column;
-    }
-    .settings-head{
-      padding: 16px 16px 12px 16px;
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 12px;
-      border-bottom: 1px solid rgba(20,24,29,.10);
-    }
-    html.theme-dark .settings-head{ border-bottom-color: rgba(233,239,241,.12); }
-
-    .settings-head h2{
-      font-size: 14px;
-      letter-spacing: .14em;
-      color: rgba(20,24,29,.86);
-    }
-    html.theme-dark .settings-head h2{ color: rgba(233,239,241,.86); }
-
-    .settings-close{
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.74);
-      padding: 10px 12px;
-      border-radius: 14px;
-      cursor:pointer;
-      transition: transform var(--t-fast) var(--ease-out);
-    }
-    html.theme-dark .settings-close{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.72);
-      color: rgba(233,239,241,.88);
-    }
-    .settings-close:hover{ transform: translateY(-1px); }
-
-    .settings-body{
-      padding: 14px 16px 18px 16px;
-      overflow: auto;
-      display:grid;
-      gap: 18px;
-    }
-    .group{
-      border: 1px solid rgba(20,24,29,.10);
-      border-radius: 16px;
-      overflow: hidden;
-      background: rgba(255,255,255,.74);
-    }
-    html.theme-dark .group{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.76);
-    }
-    .group__title{
-      padding: 12px 14px;
-      border-bottom: 1px solid rgba(20,24,29,.10);
-      font-size: 12px;
-      letter-spacing: .16em;
-      color: rgba(20,24,29,.56);
-    }
-    html.theme-dark .group__title{
-      border-bottom-color: rgba(233,239,241,.12);
-      color: rgba(233,239,241,.56);
-    }
-
-    .setting-row{
-      display:flex;
-      align-items:center;
-      justify-content: space-between;
-      gap: 14px;
-      padding: 14px;
-      border-top: 1px solid rgba(20,24,29,.10);
-    }
-    html.theme-dark .setting-row{ border-top-color: rgba(233,239,241,.12); }
-    .setting-row:first-of-type{ border-top: none; }
-
-    .setting-row .label-wrap{
-      display:grid;
-      gap: 3px;
-    }
-    .setting-row .label-wrap strong{
-      font-size: 13px;
-      letter-spacing: .06em;
-      color: rgba(20,24,29,.84);
-      font-weight: 650;
-    }
-    html.theme-dark .setting-row .label-wrap strong{ color: rgba(233,239,241,.84); }
-    .setting-row .label-wrap small{
-      font-size: 12px;
-      color: rgba(20,24,29,.52);
-    }
-    html.theme-dark .setting-row .label-wrap small{ color: rgba(233,239,241,.52); }
 
     /* Controls */
-    .toggle{
-      position: relative;
-      width: 46px;
-      height: 28px;
-      border-radius: 999px;
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.70);
-      cursor: pointer;
-      transition: background var(--t-fast) var(--ease-out);
-      flex: 0 0 auto;
-    }
-    html.theme-dark .toggle{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.72);
-    }
-    .toggle::after{
-      content:"";
+    #controls{
       position:absolute;
-      top: 50%;
-      left: 4px;
-      width: 20px;
-      height: 20px;
-      border-radius: 999px;
-      background: rgba(20,24,29,.20);
-      transform: translateY(-50%);
-      transition: transform var(--t-fast) var(--ease-out), background var(--t-fast) var(--ease-out);
-    }
-    html.theme-dark .toggle::after{ background: rgba(233,239,241,.20); }
-
-    .toggle[aria-checked="true"]{
-      background: rgba(118,183,167,.12);
-      border-color: rgba(118,183,167,.28);
-    }
-    .toggle[aria-checked="true"]::after{
-      transform: translate(18px, -50%);
-      background: rgba(118,183,167,.22);
-    }
-
-    .select{
-      border-radius: 12px;
-      border: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.70);
-      color: rgba(20,24,29,.78);
-      padding: 10px 12px;
-      min-width: 180px;
-    }
-    html.theme-dark .select{
-      border-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.72);
-      color: rgba(233,239,241,.78);
-    }
-
-    .settings-foot{
-      padding: 12px 16px 16px 16px;
-      border-top: 1px solid rgba(20,24,29,.10);
+      right:16px; top:16px;
       display:flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items:center;
+      flex-direction:column;
+      gap:8px;
+      pointer-events:auto;
+      z-index:6;
     }
-    html.theme-dark .settings-foot{ border-top-color: rgba(233,239,241,.12); }
-    .settings-foot .note{
-      font-size: 12px;
-      color: rgba(20,24,29,.48);
+    button{
+      background:var(--panel);
+      border:1px solid var(--panel-brd);
+      color:var(--hud);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      letter-spacing:.1em;
+      font-weight:800;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 10px 40px rgba(0,0,0,.35);
     }
-    html.theme-dark .settings-foot .note{ color: rgba(233,239,241,.48); }
+    button:hover{border-color: rgba(255,255,255,.28);}
+    button:active{transform: translateY(1px);}
 
-    /* ==========================================================================
-      12) Reveal Animations（控えめ / 1パターン）
-    ========================================================================== */
-    .reveal{
-      opacity: 0;
-      transform: translateY(10px);
-      transition: opacity var(--t-base) var(--ease-out), transform var(--t-base) var(--ease-out);
-      transition-delay: var(--delay, 0ms);
-      will-change: opacity, transform;
-    }
-    .reveal.is-visible{
-      opacity: 1;
-      transform: translateY(0);
-    }
-    html.motion-off .reveal{
-      opacity: 1 !important;
-      transform: none !important;
-      transition: none !important;
-    }
-
-    @media (prefers-reduced-motion: reduce){
-      html{ scroll-behavior: auto; }
-      html.js body{ transition: none; opacity: 1; }
-      .reveal{ opacity: 1 !important; transform: none !important; transition: none !important; }
-      .btn, .card, .nav-drawer, .nav-overlay, .settings-drawer, .settings-overlay{ transition: none !important; }
+    #hint{
+      position:absolute;
+      left:16px; bottom:16px;
+      color: rgba(255,255,255,.52);
+      font-size:12px;
+      line-height:1.6;
+      letter-spacing:.08em;
+      z-index:6;
+      text-shadow: 0 0 18px rgba(0,0,0,.6);
     }
 
-    /* ==========================================================================
-      13) Footer
-    ========================================================================== */
-    footer{
-      padding-block: 34px;
-      border-top: 1px solid rgba(20,24,29,.10);
-      background: rgba(255,255,255,.30);
-    }
-    html.theme-dark footer{
-      border-top-color: rgba(233,239,241,.12);
-      background: rgba(17,27,29,.30);
-    }
-    .footer-inner{
-      display:grid;
-      gap: 16px;
-    }
-    .footer-nav{
-      display:flex;
-      flex-wrap: wrap;
-      gap: 14px 18px;
-      padding: 0;
-      margin: 0;
-      list-style: none;
-    }
-    .footer-nav a{
-      font-size: 13px;
-      color: rgba(20,24,29,.70);
-      border-bottom: 1px solid rgba(118,183,167,.18);
-      padding-bottom: 2px;
-      transition: opacity var(--t-fast) var(--ease-out);
-    }
-    html.theme-dark .footer-nav a{ color: rgba(233,239,241,.70); }
-    .footer-nav a:hover{ opacity: .70; }
-    .copyright{
-      font-size: 12px;
-      color: rgba(20,24,29,.48);
-      letter-spacing: .04em;
-    }
-    html.theme-dark .copyright{ color: rgba(233,239,241,.48); }
-
-    /* ==========================================================================
-      14) Responsive
-    ========================================================================== */
-    @media (min-width: 960px){
-      :root{ --gutter: 40px; }
-
-      .nav-toggle{ display:none; }
-      .site-nav{ display:block; }
-
-      .two-col{
-        grid-template-columns: 1fr 1fr;
-        align-items: start;
-      }
-
-      .works-grid{
-        grid-template-columns: repeat(3, 1fr);
-      }
-
-      .about{
-        grid-template-columns: 1.2fr .8fr;
-      }
-
-      .footer-inner{
-        grid-template-columns: 1fr auto;
-        align-items: center;
-      }
-      .copyright{ text-align: right; }
-
-      .row{
-        grid-template-columns: 180px 1fr;
-        align-items: start;
-        gap: 14px;
-      }
-      .row .row-excerpt{ -webkit-line-clamp: 1; }
-      .row .meta-row{ grid-column: 1 / 2; }
-      .row .row-btn{ grid-column: 2 / 3; }
-    }
-
-    /* Utility */
-    .sr-only{
-      position: absolute;
-      width: 1px; height: 1px;
-      padding: 0; margin: -1px;
-      overflow: hidden;
-      clip: rect(0,0,0,0);
-      white-space: nowrap;
-      border: 0;
-    }
-    .br-md{ display:none; }
-    @media (min-width: 960px){
-      .br-md{ display:inline; }
+    @media (max-width: 900px){
+      .row{gap:14px}
+      .block{min-width:92px}
+      .num{font-size:52px}
+      .title{font-size:16px}
+      .launchHead{font-size:44px}
     }
   </style>
 </head>
-
 <body>
-  <a class="skip-link" href="#main">本文へスキップ</a>
-
-  <!-- ===========================================================
-    Header
-    - SPA風：Home / News / Schedule を切り替える
-    - Settings は右ドロワーを開く
-  ============================================================ -->
-  <header class="site-header" role="banner">
-    <div class="container header-inner">
-      <a class="brand" href="#home" data-nav="home" aria-label="RINTY OFFICIAL SITE（ホームへ）">
-        <span class="brand__mark">RINTY</span>
-        <span class="brand__sub">OFFICIAL</span>
-      </a>
-
-      <!-- PC Navigation -->
-      <nav class="site-nav" aria-label="Primary">
-        <ul>
-          <li><a href="#home" data-nav="home" data-i18n="nav.home">Home</a></li>
-          <li><a href="#news" data-nav="news" data-i18n="nav.news">News</a></li>
-          <li><a href="#schedule" data-nav="schedule" data-i18n="nav.schedule">Schedule</a></li>
-          <li>
-            <button type="button" data-open-settings aria-label="Settings">
-              <span data-i18n="nav.settings">Settings</span>
-            </button>
-          </li>
-        </ul>
-      </nav>
-
-      <!-- Mobile Menu Button -->
-      <button class="nav-toggle" type="button" aria-controls="mobile-drawer" aria-expanded="false">
-        <span class="nav-toggle__icon" aria-hidden="true"><span></span><span></span><span></span></span>
-        <span data-i18n="nav.menu">Menu</span>
-      </button>
-    </div>
-  </header>
-
-  <!-- Mobile Navigation Drawer -->
-  <div class="nav-overlay" hidden></div>
-  <aside class="nav-drawer" id="mobile-drawer" aria-label="Mobile Navigation" hidden>
-    <div class="nav-drawer__head">
-      <div class="nav-drawer__title">NAVIGATION</div>
-      <button class="nav-close" type="button">Close</button>
-    </div>
-    <nav aria-label="Primary (Mobile)">
-      <ul>
-        <li><a href="#home" data-nav="home"><strong data-i18n="nav.home">Home</strong><span data-i18n="nav.home.sub">トップ</span></a></li>
-        <li><a href="#news" data-nav="news"><strong data-i18n="nav.news">News</strong><span data-i18n="nav.news.sub">お知らせ</span></a></li>
-        <li><a href="#schedule" data-nav="schedule"><strong data-i18n="nav.schedule">Schedule</strong><span data-i18n="nav.schedule.sub">活動予定</span></a></li>
-        <li>
-          <button type="button" data-open-settings>
-            <strong data-i18n="nav.settings">Settings</strong><span data-i18n="nav.settings.sub">表示設定</span>
-          </button>
-        </li>
-      </ul>
-    </nav>
-  </aside>
-
-  <!-- ===========================================================
-    Main / Views
-  ============================================================ -->
-  <main id="main">
-    <!-- =========================
-      VIEW: HOME
-    ========================== -->
-    <section class="view" id="home" data-view="home" aria-label="Home">
-      <!-- Hero -->
-      <div class="hero">
-        <div class="container hero__inner">
-          <div class="kicker reveal" style="--delay: 0ms;">RINTY / OFFICIAL SITE</div>
-
-          <h1 class="hero__title reveal" style="--delay: 80ms;" data-i18n="home.hero.title">
-            2026年<br class="br-md">“大迫力”の物語を…
-          </h1>
-
-          <p class="hero__lead reveal" style="--delay: 160ms;" data-i18n="home.hero.lead">
-            今年もワクワクとホラーを。<br class="br-md">
-            静かな余韻が残る投稿を日々更新していきます。
-          </p>
-
-          <div class="hero__actions reveal" style="--delay: 240ms;">
-            <button class="btn btn--primary" type="button" data-go="news" data-i18n="home.hero.ctaNews">News</button>
-            <button class="btn btn--ghost" type="button" data-go="schedule" data-i18n="home.hero.ctaSchedule">Schedule</button>
-          </div>
-
-          <!-- 最新1件（Newsの先頭を表示） -->
-          <div class="hero__latest reveal" style="--delay: 320ms;">
-            <span class="label">NEW</span>
-            <button type="button" data-open-latest-news aria-label="最新ニュースを開く">
-              <span id="hero-latest-text">Loading...</span>
-            </button>
-          </div>
-        </div>
+  <div id="stage">
+    <canvas id="bg"></canvas>
+    <div id="vignette"></div>
+    <div id="hud">
+      <div class="title" id="title">WEB SITE 公開まで</div>
+      <div class="subtitle" id="subtitle">COUNTDOWN TO LAUNCH</div>
+      <div class="row" aria-label="countdown">
+        <div class="block"><div class="num" id="d">00</div><div class="label">DAYS</div></div>
+        <div class="block"><div class="num" id="h">00</div><div class="label">HOURS</div></div>
+        <div class="block"><div class="num" id="m">00</div><div class="label">MIN</div></div>
+        <div class="block"><div class="num" id="s">00</div><div class="label">SEC</div></div>
       </div>
-
-      <!-- Latest preview (News / Schedule) -->
-      <section class="view" style="padding-block: var(--section-pad-tight);" aria-label="Latest Preview">
-        <div class="container">
-          <div class="section__head">
-            <div>
-              <h2 class="section__title reveal" data-i18n="home.latest.title">Latest</h2>
-              <p class="section__desc reveal" style="--delay:60ms;" data-i18n="home.latest.desc">
-                更新と予定を、少数だけ整えて表示します（信頼の中核）。
-              </p>
-            </div>
-          </div>
-
-          <div class="two-col">
-            <div class="panel reveal">
-              <div class="subhead">
-                <h3 data-i18n="home.latest.news">News</h3>
-                <button class="text-link" type="button" data-go="news" data-i18n="common.viewAll">View all</button>
-              </div>
-              <div id="home-news-list"></div>
-            </div>
-
-            <div class="panel reveal" style="--delay:80ms;">
-              <div class="subhead">
-                <h3 data-i18n="home.latest.schedule">Schedule</h3>
-                <button class="text-link" type="button" data-go="schedule" data-i18n="common.viewAll">View all</button>
-              </div>
-              <div id="home-schedule-list"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Featured Works (静的：後から差し替え) -->
-      <section class="view" aria-label="Featured Works">
-        <div class="container">
-          <div class="section__head">
-            <div>
-              <h2 class="section__title reveal" data-i18n="home.works.title">Featured Works</h2>
-              <p class="section__desc reveal" style="--delay:60ms;" data-i18n="home.works.desc">
-                代表作を少数だけ。情報を詰めず、余白で“空気”を残す。
-              </p>
-            </div>
-          </div>
-
-          <div class="grid works-grid">
-            <article class="card reveal">
-              <a href="#" target="_blank" rel="noopener" aria-label="作品：Title A（YouTube/配信へ）">
-                <div class="card__media" aria-hidden="true"><div class="card__tag">MV</div></div>
-                <div class="card__body">
-                  <h3 class="card__title">Title A（仮）</h3>
-                  <div class="card__meta">MV / 2025</div>
-                  <div class="card__desc">静かな光、少しだけズレる日常。短い説明はここ。</div>
-                </div>
-              </a>
-            </article>
-
-            <article class="card reveal" style="--delay:60ms;">
-              <a href="#" target="_blank" rel="noopener" aria-label="作品：Title B（Spotify/配信へ）">
-                <div class="card__media" aria-hidden="true"><div class="card__tag">MUSIC</div></div>
-                <div class="card__body">
-                  <h3 class="card__title">Title B（仮）</h3>
-                  <div class="card__meta">Single / 2025</div>
-                  <div class="card__desc">“心霊”は怖さではなく、気配として。暗くしない音像。</div>
-                </div>
-              </a>
-            </article>
-
-            <article class="card reveal" style="--delay:120ms;">
-              <a href="#" target="_blank" rel="noopener" aria-label="作品：Title C（YouTube/配信へ）">
-                <div class="card__media" aria-hidden="true"><div class="card__tag">MV</div></div>
-                <div class="card__body">
-                  <h3 class="card__title">Title C（仮）</h3>
-                  <div class="card__meta">MV / 2024</div>
-                  <div class="card__desc">余韻が残るテンポ。説明は最小で、体験を先に。</div>
-                </div>
-              </a>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <!-- About -->
-      <section class="view" style="padding-block: var(--section-pad-tight);" aria-label="About RINTY">
-        <div class="container">
-          <div class="section__head">
-            <div>
-              <h2 class="section__title reveal" data-i18n="home.about.title">About</h2>
-              <p class="section__desc reveal" style="--delay:60ms;" data-i18n="home.about.desc">
-                公式として、世界観の“説明責任”は短く・上品に。
-              </p>
-            </div>
-          </div>
-
-          <div class="about">
-            <div class="about__box reveal">
-              <p class="about__lead" data-i18n="home.about.lead">
-                RINTYは、透明感のあるサウンドに“気配”を重ねる個人アーティストです。<br>
-                心霊を扱うときも、怖さより「日常のズレ」や「余韻」を大切にしています。
-              </p>
-              <div class="tag-row" aria-label="Keywords">
-                <span class="pill">透明感</span>
-                <span class="pill">静けさ</span>
-                <span class="pill">気配</span>
-                <span class="pill">余韻</span>
-              </div>
-            </div>
-            <div class="about__visual reveal" style="--delay:80ms;" role="img" aria-label="RINTYのイメージビジュアル（仮）"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Links -->
-      <section class="view" aria-label="Official Links">
-        <div class="container">
-          <div class="section__head">
-            <div>
-              <h2 class="section__title reveal" data-i18n="home.links.title">Links</h2>
-              <p class="section__desc reveal" style="--delay:60ms;" data-i18n="home.links.desc">
-                視聴・フォロー先。主要だけ、整えて配置。
-              </p>
-            </div>
-          </div>
-
-          <div class="links">
-            <a class="link-item reveal" href="#" target="_blank" rel="noopener" aria-label="YouTubeへ">
-              <strong>YouTube</strong><span>Watch</span>
-            </a>
-            <a class="link-item reveal" style="--delay:60ms;" href="#" target="_blank" rel="noopener" aria-label="Spotifyへ">
-              <strong>Spotify</strong><span>Listen</span>
-            </a>
-            <a class="link-item reveal" style="--delay:120ms;" href="#" target="_blank" rel="noopener" aria-label="TikTokへ">
-              <strong>TikTok</strong><span>Clips</span>
-            </a>
-            <a class="link-item reveal" style="--delay:180ms;" href="#" target="_blank" rel="noopener" aria-label="Xへ">
-              <strong>X</strong><span>News</span>
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <!-- Contact CTA -->
-      <section class="view" style="padding-block: var(--section-pad-tight);" aria-label="Contact">
-        <div class="container">
-          <div class="cta reveal">
-            <h2 class="section__title" style="letter-spacing:.06em;" data-i18n="home.contact.title">Contact</h2>
-            <p data-i18n="home.contact.lead">
-              出演依頼・取材・コラボのご相談はこちら。<br class="br-md">
-              返信目安や受付内容は、後から追記できます。
-            </p>
-            <div style="display:flex; gap:12px; flex-wrap:wrap;">
-              <a class="btn btn--primary" href="mailto:contact@example.com">Email</a>
-              <button class="btn btn--ghost" type="button" data-open-settings data-i18n="home.contact.settings">Settings</button>
-            </div>
-            <div class="note">※メールアドレスは仮です（後から差し替え）</div>
-          </div>
-        </div>
-      </section>
-    </section>
-
-    <!-- =========================
-      VIEW: NEWS
-    ========================== -->
-    <section class="view" id="news" data-view="news" aria-label="News">
-      <div class="container">
-        <div class="section__head">
-          <div>
-            <h2 class="section__title reveal" data-i18n="news.title">News</h2>
-            <p class="section__desc reveal" style="--delay:60ms;" data-i18n="news.desc">
-              お知らせ・更新情報。公式として短く整えて掲載します。
-            </p>
-          </div>
-        </div>
-
-        <div class="news-layout">
-          <!-- News List -->
-          <div class="panel reveal" id="news-list-panel" aria-label="News List">
-            <div class="subhead">
-              <h3 data-i18n="news.list.title">All posts</h3>
-              <small id="news-count">—</small>
-            </div>
-            <div id="news-list"></div>
-          </div>
-
-          <!-- News Detail -->
-          <div class="news-detail reveal" id="news-detail-panel" aria-label="News Detail" hidden>
-            <div class="news-detail__head">
-              <button class="back-btn" type="button" data-news-back>
-                ← <span data-i18n="common.back">Back</span>
-              </button>
-              <span class="kicker" data-i18n="news.detail.kicker">NEWS</span>
-            </div>
-
-            <div class="article" id="news-detail"></div>
-
-            <div style="margin-top:14px;">
-              <button class="back-btn" type="button" data-news-back>
-                ← <span data-i18n="common.back">Back</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- =========================
-      VIEW: SCHEDULE
-    ========================== -->
-    <section class="view" id="schedule" data-view="schedule" aria-label="Schedule">
-      <div class="container">
-        <div class="section__head">
-          <div>
-            <h2 class="section__title reveal" data-i18n="schedule.title">Schedule</h2>
-            <p class="section__desc reveal" style="--delay:60ms;" data-i18n="schedule.desc">
-              活動スケジュール。来場/視聴に必要な情報を、少数の要点で。
-            </p>
-          </div>
-        </div>
-
-        <div class="filters reveal">
-          <div class="segmented" aria-label="Schedule filter">
-            <button type="button" data-schedule-filter="upcoming" aria-pressed="true" data-i18n="schedule.filter.upcoming">Upcoming</button>
-            <button type="button" data-schedule-filter="past" aria-pressed="false" data-i18n="schedule.filter.past">Past</button>
-          </div>
-          <div class="kicker" id="schedule-updated">—</div>
-        </div>
-
-        <div class="panel reveal" id="schedule-panel">
-          <div class="subhead">
-            <h3 data-i18n="schedule.list.title">List</h3>
-            <small id="schedule-count">—</small>
-          </div>
-          <div id="schedule-list"></div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- ===========================================================
-    Settings Drawer
-  ============================================================ -->
-  <div class="settings-overlay" hidden></div>
-
-  <aside class="settings-drawer" role="dialog" aria-modal="true" aria-label="Settings" hidden>
-    <div class="settings-inner">
-      <div class="settings-head">
-        <h2 data-i18n="settings.title">Settings</h2>
-        <button class="settings-close" type="button" data-close-settings>Close</button>
-      </div>
-
-      <div class="settings-body">
-        <!-- Appearance -->
-        <section class="group" aria-label="Appearance">
-          <div class="group__title" data-i18n="settings.group.appearance">APPEARANCE</div>
-
-          <div class="setting-row">
-            <div class="label-wrap">
-              <strong data-i18n="settings.theme.label">Theme</strong>
-              <small data-i18n="settings.theme.help">ライト/ダークを切り替えます</small>
-            </div>
-            <div class="segmented" aria-label="Theme">
-              <button type="button" data-set-theme="light" aria-pressed="true" data-i18n="settings.theme.light">Light</button>
-              <button type="button" data-set-theme="dark" aria-pressed="false" data-i18n="settings.theme.dark">Dark</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- Motion -->
-        <section class="group" aria-label="Motion">
-          <div class="group__title" data-i18n="settings.group.motion">MOTION</div>
-
-          <div class="setting-row">
-            <div class="label-wrap">
-              <strong data-i18n="settings.motion.label">Animation</strong>
-              <small data-i18n="settings.motion.help">出現/切替アニメを抑制できます</small>
-            </div>
-            <button class="toggle" type="button" role="switch" aria-checked="true" data-toggle-motion>
-              <span class="sr-only">Toggle motion</span>
-            </button>
-          </div>
-        </section>
-
-        <!-- Layout -->
-        <section class="group" aria-label="Layout">
-          <div class="group__title" data-i18n="settings.group.layout">LAYOUT</div>
-
-          <div class="setting-row">
-            <div class="label-wrap">
-              <strong data-i18n="settings.density.label">Density</strong>
-              <small data-i18n="settings.density.help">余白の量を切り替えます</small>
-            </div>
-            <div class="segmented" aria-label="Density">
-              <button type="button" data-set-density="spacious" aria-pressed="false" data-i18n="settings.density.spacious">Spacious</button>
-              <button type="button" data-set-density="standard" aria-pressed="true" data-i18n="settings.density.standard">Standard</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- Language -->
-        <section class="group" aria-label="Language">
-          <div class="group__title" data-i18n="settings.group.language">LANGUAGE</div>
-
-          <div class="setting-row">
-            <div class="label-wrap">
-              <strong data-i18n="settings.language.label">Language</strong>
-              <small data-i18n="settings.language.help">UIの表示言語を変更します</small>
-            </div>
-            <select class="select" id="language-select" aria-label="Language">
-              <option value="ja">日本語（既定）</option>
-              <option value="en">English</option>
-              <option value="ko">한국어</option>
-              <option value="zh-Hans">简体中文</option>
-              <option value="zh-Hant">繁體中文</option>
-              <option value="ru">Русский</option>
-            </select>
-          </div>
-        </section>
-      </div>
-
-      <div class="settings-foot">
-        <button class="text-link" type="button" data-reset-settings data-i18n="settings.reset">Reset</button>
-        <div class="note" id="settings-status">—</div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- ===========================================================
-    Footer
-  ============================================================ -->
-  <footer role="contentinfo">
-    <div class="container footer-inner">
-      <div>
-        <div class="brand" aria-label="RINTY OFFICIAL（フッター）">
-          <span class="brand__mark">RINTY</span>
-          <span class="brand__sub">OFFICIAL</span>
-        </div>
-
-        <ul class="footer-nav" aria-label="Footer Navigation">
-          <li><a href="#home" data-nav="home" data-i18n="nav.home">Home</a></li>
-          <li><a href="#news" data-nav="news" data-i18n="nav.news">News</a></li>
-          <li><a href="#schedule" data-nav="schedule" data-i18n="nav.schedule">Schedule</a></li>
-          <li><button class="text-link" type="button" data-open-settings data-i18n="nav.settings">Settings</button></li>
-        </ul>
-      </div>
-
-      <div class="copyright">
-        © <span id="year"></span> RINTY. All rights reserved.
-      </div>
+      <div id="status">Target: 1/2 00:00 (JST)</div>
+      <div id="debug"></div>
     </div>
 
-    <div class="container" style="padding-top:18px; padding-bottom:4px;">
-      <p style="font-size:12px; color: rgba(20,24,29,.46); max-width: 88ch;">
-        Privacy（仮）：フォームや埋め込みを導入する場合のために、後からここをプライバシーポリシー本文に差し替えます。
-      </p>
+    <div id="launch">
+      <div class="launchHead" id="launchHead">LAUNCHED</div>
+      <div class="launchSub" id="launchSub">WEB SITE IS NOW OPEN</div>
     </div>
-  </footer>
 
-  <noscript>
-    <style>
-      html{ scroll-behavior: auto !important; }
-      .reveal{ opacity:1 !important; transform:none !important; transition:none !important; }
-      .nav-toggle{ display:none !important; }
-      .site-nav{ display:block !important; }
-      .settings-drawer, .settings-overlay, .nav-drawer, .nav-overlay{ display:none !important; }
-    </style>
-  </noscript>
+    <div id="scanlines"></div>
+    <div id="flash"></div>
+
+    <div id="controls">
+      <button id="btnFullscreen">Fullscreen (F)</button>
+      <button id="btnWake">Wake Lock (W)</button>
+      <button id="btnHud">HUD (H)</button>
+      <button id="btnPerf">Performance: AUTO (P)</button>
+      <button id="btnTest">TEST LAUNCH (T)</button>
+    </div>
+
+    <div id="hint">
+      Keys: <b>F</b> Fullscreen / <b>W</b> WakeLock / <b>H</b> HUD / <b>P</b> Performance / <b>T</b> Test<br>
+      これは<strong>外部ライブラリ無し</strong>なので、OBSの「ローカルファイル」でも動きます
+    </div>
+  </div>
 
   <script>
-    /* ==========================================================================
-      RINTY OFFICIAL SITE - Minimal SPA App (No libraries)
-      --------------------------------------------------------------------------
-      ✅ URL固定：hashやpushStateは基本使わない（将来拡張しやすい設計）
-      ✅ 画面切替：Home / News / Schedule
-      ✅ News：配列データ → 一覧 → 詳細（戻るあり）
-      ✅ Schedule：配列データ → Upcoming/Past
-      ✅ Settings：localStorage 保存 → CSSクラス/翻訳を切替
-    ========================================================================== */
+    /***********************
+     * CONFIG
+     ***********************/
+    const CONFIG = {
+      // 次に来る「1/2 00:00（JST）」へカウント
+      TARGET_RULE: { month: 1, day: 2, hour: 0, minute: 0, tzOffsetMinutes: 9*60 }, // JST固定
 
-    (function(){
-      const $  = (sel, root=document) => root.querySelector(sel);
-      const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+      TITLE: 'WEB SITE 公開まで',
+      SUBTITLE: 'COUNTDOWN TO LAUNCH',
+      STATUS_PREFIX: 'Target:',
 
-      /* ------------------------------------------------------------------------
-        0) Data (Mock) - 後からFirestoreへ差し替え
-      ------------------------------------------------------------------------ */
-      const NEWS_ARTICLES = [
-        {
-          id: "n_001",
-          slug: "new-single-2025-12",
-          title: "新作シングル公開のお知らせ（仮）",
-          date: "2025-12-20",
-          category: "NEWS",
-          excerpt: "新作シングルを公開しました。透明感の中に“気配”を重ねた1曲です。",
-          updatedAt: "2025-12-21",
-          body: [
-            { type: "p", text: "新作シングルを公開しました。今作は“怖さ”ではなく、日常のズレや余韻を大切にしています。" },
-            { type: "h2", text: "Listening" },
-            { type: "ul", items: ["YouTube / Spotify などで順次公開（仮）", "リンクは後から追加できます"] },
-            { type: "p", text: "制作の背景や、音作りの意図は後日追記予定です。" }
-          ],
-          links: [
-            { label: "YouTube", url: "#" },
-            { label: "Spotify", url: "#" }
-          ],
-          status: "published"
-        },
-        {
-          id: "n_002",
-          slug: "mv-release-2025-10",
-          title: "MV公開（仮）",
-          date: "2025-10-18",
-          category: "NEWS",
-          excerpt: "MVを公開しました。静かな画面の中で、少しだけ違和感が残る構成です。",
-          body: [
-            { type: "p", text: "MVを公開しました。色数を増やさず、光と余白で世界観を作っています。" },
-            { type: "p", text: "映像内の要素は“説明しすぎない”ことを意識しています。" }
-          ],
-          links: [{ label: "Watch", url: "#" }],
-          status: "published"
-        },
-        {
-          id: "n_003",
-          slug: "site-open-2025-09",
-          title: "公式サイト公開（仮）",
-          date: "2025-09-01",
-          category: "NEWS",
-          excerpt: "RINTY公式サイトを公開しました。更新はLatestとNewsを中心に行います。",
-          body: [
-            { type: "p", text: "公式サイトを公開しました。初見5秒で世界観が伝わり、信頼できる“公式の起点”を目指します。" },
-            { type: "ul", items: ["News：更新情報", "Schedule：活動予定", "Settings：見やすさの調整"] }
-          ],
-          status: "published"
-        }
-      ];
+      LAUNCH_HEADLINE: 'LAUNCHED',
+      LAUNCH_TAGLINE: 'WEB SITE IS NOW OPEN',
 
-      const SCHEDULE_ITEMS = [
-        {
-          id: "s_001",
-          date: "2026-01-18",
-          type: "LIVE",
-          title: "出演情報（仮）",
-          location: "Tokyo / Venue name",
-          note: "詳細は後日追記予定",
-          links: [{ label: "Ticket", url: "#" }],
-          status: "published"
-        },
-        {
-          id: "s_002",
-          date: "2025-11-30",
-          type: "LIVE",
-          title: "イベント出演（仮）",
-          location: "Osaka / Venue name",
-          note: "タイムテーブル公開（仮）",
-          links: [{ label: "Official", url: "#" }],
-          status: "published"
-        },
-        {
-          id: "s_003",
-          date: "2025-10-18",
-          type: "RELEASE",
-          title: "MV公開",
-          location: "YouTube",
-          note: "",
-          links: [{ label: "Watch", url: "#" }],
-          status: "published"
-        }
-      ];
+      // 演出
+      INTENSIFY_WINDOW_MIN: 12,     // 最後の何分で強くするか
+      FINAL_10S_BOOST: 1.0,         // 残り10秒の強化係数
 
-      /* ------------------------------------------------------------------------
-        1) i18n (UI only) - 70%実装（UIラベル中心）
-      ------------------------------------------------------------------------ */
-      const I18N = {
-        ja: {
-          "nav.home": "Home", "nav.home.sub": "トップ",
-          "nav.news": "News", "nav.news.sub": "お知らせ",
-          "nav.schedule": "Schedule", "nav.schedule.sub": "活動予定",
-          "nav.settings": "Settings", "nav.settings.sub": "表示設定",
-          "nav.menu": "Menu",
+      // 星の数（Performanceモードで上書き）
+      STAR_COUNT_AUTO: 3200,
+      STAR_COUNT_LOW: 1700,
+      STAR_COUNT_HIGH: 5200,
 
-          "home.hero.title": "透明感のある音楽と、\n“気配”の物語。",
-          "home.hero.lead": "音楽 × 心霊。でも暗くしない。\n静かな余韻が残る作品を、少しずつ更新していきます。",
-          "home.hero.ctaNews": "News",
-          "home.hero.ctaSchedule": "Schedule",
+      // ワープ速度（ベース）
+      SPEED_BASE: 0.36, // starZの減衰速度（大きいほど速い）
+      SPEED_MAX_BOOST: 2.2, // 近づくほどの上乗せ
 
-          "home.latest.title": "Latest",
-          "home.latest.desc": "更新と予定を、少数だけ整えて表示します（信頼の中核）。",
-          "home.latest.news": "News",
-          "home.latest.schedule": "Schedule",
-          "common.viewAll": "View all",
+      // 爆発
+      BURST_PARTICLES: 1600,
+      BURST_DURATION: 2.2, // sec
+    };
 
-          "home.works.title": "Featured Works",
-          "home.works.desc": "代表作を少数だけ。情報を詰めず、余白で“空気”を残す。",
+    /***********************
+     * DOM
+     ***********************/
+    const $ = (id) => document.getElementById(id);
+    $('title').textContent = CONFIG.TITLE;
+    $('subtitle').textContent = CONFIG.SUBTITLE;
+    $('launchHead').textContent = CONFIG.LAUNCH_HEADLINE;
+    $('launchSub').textContent = CONFIG.LAUNCH_TAGLINE;
 
-          "home.about.title": "About",
-          "home.about.desc": "公式として、世界観の“説明責任”は短く・上品に。",
-          "home.about.lead": "RINTYは、透明感のあるサウンドに“気配”を重ねる個人アーティストです。\n心霊を扱うときも、怖さより「日常のズレ」や「余韻」を大切にしています。",
+    const stage = $('stage');
+    const canvas = $('bg');
+    const ctx = canvas.getContext('2d', { alpha:true, desynchronized:true });
 
-          "home.links.title": "Links",
-          "home.links.desc": "視聴・フォロー先。主要だけ、整えて配置。",
+    const vignetteEl = $('vignette');
+    const flashEl = $('flash');
+    const hudEl = $('hud');
+    const launchEl = $('launch');
 
-          "home.contact.title": "Contact",
-          "home.contact.lead": "出演依頼・取材・コラボのご相談はこちら。\n返信目安や受付内容は、後から追記できます。",
-          "home.contact.settings": "Settings",
+    const dEl = $('d'), hEl = $('h'), mEl = $('m'), sEl = $('s');
+    const statusEl = $('status');
+    const debugEl = $('debug');
 
-          "news.title": "News",
-          "news.desc": "お知らせ・更新情報。公式として短く整えて掲載します。",
-          "news.list.title": "All posts",
-          "news.detail.kicker": "NEWS",
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const clamp01 = (x) => Math.max(0, Math.min(1, x));
+    const smoothstep = (a,b,x) => {
+      const t = clamp01((x-a)/(b-a));
+      return t*t*(3-2*t);
+    };
 
-          "schedule.title": "Schedule",
-          "schedule.desc": "活動スケジュール。来場/視聴に必要な情報を、少数の要点で。",
-          "schedule.filter.upcoming": "Upcoming",
-          "schedule.filter.past": "Past",
-          "schedule.list.title": "List",
+    /***********************
+     * TIME (JST fixed)
+     ***********************/
+    function makeTargetDateNextOccurrence(rule){
+      const now = new Date();
+      const nowUtcMs = now.getTime();
+      const nowJstMs = nowUtcMs + (rule.tzOffsetMinutes * 60_000);
+      const nowJst = new Date(nowJstMs);
 
-          "common.back": "Back",
-          "common.none": "表示できる項目がありません。",
+      let year = nowJst.getUTCFullYear();
+      const targetThisYearUtcMs =
+        Date.UTC(year, rule.month-1, rule.day, rule.hour, rule.minute) - (rule.tzOffsetMinutes * 60_000);
 
-          "settings.title": "Settings",
-          "settings.group.appearance": "APPEARANCE",
-          "settings.group.motion": "MOTION",
-          "settings.group.layout": "LAYOUT",
-          "settings.group.language": "LANGUAGE",
+      if (nowUtcMs >= targetThisYearUtcMs) year += 1;
 
-          "settings.theme.label": "Theme",
-          "settings.theme.help": "ライト/ダークを切り替えます",
-          "settings.theme.light": "Light",
-          "settings.theme.dark": "Dark",
+      const targetUtcMs =
+        Date.UTC(year, rule.month-1, rule.day, rule.hour, rule.minute) - (rule.tzOffsetMinutes * 60_000);
 
-          "settings.motion.label": "Animation",
-          "settings.motion.help": "出現/切替アニメを抑制できます",
+      return new Date(targetUtcMs);
+    }
 
-          "settings.density.label": "Density",
-          "settings.density.help": "余白の量を切り替えます",
-          "settings.density.spacious": "Spacious",
-          "settings.density.standard": "Standard",
+    const TARGET = makeTargetDateNextOccurrence(CONFIG.TARGET_RULE);
 
-          "settings.language.label": "Language",
-          "settings.language.help": "UIの表示言語を変更します",
-          "settings.reset": "Reset"
-        },
-        en: {
-          "nav.home": "Home","nav.home.sub":"Top",
-          "nav.news": "News","nav.news.sub":"Updates",
-          "nav.schedule":"Schedule","nav.schedule.sub":"Plans",
-          "nav.settings":"Settings","nav.settings.sub":"Display",
-          "nav.menu":"Menu",
-          "common.viewAll":"View all",
-          "common.back":"Back",
-          "common.none":"No items to display.",
-          "news.desc":"Updates and announcements in an official tone.",
-          "schedule.desc":"Upcoming and past activities — minimal, essential info.",
-          "settings.theme.help":"Switch light/dark",
-          "settings.motion.help":"Reduce motion",
-          "settings.density.help":"Adjust spacing",
-          "settings.language.help":"Change UI language",
-          "settings.reset":"Reset"
-        }
+    function formatTargetForStatus(date){
+      const jstMs = date.getTime() + (CONFIG.TARGET_RULE.tzOffsetMinutes * 60_000);
+      const jst = new Date(jstMs);
+      const yy = jst.getUTCFullYear();
+      const mm = pad2(jst.getUTCMonth()+1);
+      const dd = pad2(jst.getUTCDate());
+      const hh = pad2(jst.getUTCHours());
+      const mi = pad2(jst.getUTCMinutes());
+      return `${CONFIG.STATUS_PREFIX} ${yy}/${mm}/${dd} ${hh}:${mi} (JST)`;
+    }
+    statusEl.textContent = formatTargetForStatus(TARGET);
+
+    function getRemainingParts(){
+      const now = Date.now();
+      let diff = TARGET.getTime() - now;
+      if (diff < 0) diff = 0;
+
+      const totalSec = Math.floor(diff / 1000);
+      const days = Math.floor(totalSec / 86400);
+      const hours = Math.floor((totalSec % 86400) / 3600);
+      const minutes = Math.floor((totalSec % 3600) / 60);
+      const seconds = totalSec % 60;
+
+      return { diff, days, hours, minutes, seconds, done: diff === 0 };
+    }
+
+    /***********************
+     * Performance mode
+     ***********************/
+    let perfMode = 'AUTO'; // AUTO | LOW | HIGH
+    function starCountForMode(){
+      if (perfMode === 'LOW') return CONFIG.STAR_COUNT_LOW;
+      if (perfMode === 'HIGH') return CONFIG.STAR_COUNT_HIGH;
+      return CONFIG.STAR_COUNT_AUTO;
+    }
+    function dprCapForMode(){
+      const dpr = window.devicePixelRatio || 1;
+      if (perfMode === 'LOW') return Math.min(dpr, 1.0);
+      if (perfMode === 'HIGH') return Math.min(dpr, 2.0);
+      return Math.min(dpr, 1.5);
+    }
+    function resScaleForMode(){
+      if (perfMode === 'LOW') return 0.88;
+      return 1.0;
+    }
+    function setPerfButton(){
+      $('btnPerf').textContent = `Performance: ${perfMode} (P)`;
+    }
+    setPerfButton();
+
+    /***********************
+     * Canvas resize
+     ***********************/
+    let W=0,H=0,scaleX=1,scaleY=1;
+    function resize(){
+      W = window.innerWidth; H = window.innerHeight;
+      const dpr = dprCapForMode();
+      const rs = resScaleForMode();
+
+      const cw = Math.max(2, Math.floor(W * dpr * rs));
+      const ch = Math.max(2, Math.floor(H * dpr * rs));
+      canvas.width = cw;
+      canvas.height = ch;
+
+      // Map CSS pixels -> canvas pixels
+      scaleX = cw / W;
+      scaleY = ch / H;
+      ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+
+      buildNebula();
+    }
+    window.addEventListener('resize', resize);
+
+    /***********************
+     * Nebula (offscreen)
+     ***********************/
+    let nebula = null;
+    function buildNebula(){
+      const size = (perfMode === 'LOW') ? 384 : 512;
+      nebula = document.createElement('canvas');
+      nebula.width = size;
+      nebula.height = size;
+      const nctx = nebula.getContext('2d', { alpha:true });
+      nctx.clearRect(0,0,size,size);
+
+      // base dark
+      const bg = nctx.createRadialGradient(size*0.5, size*0.5, 0, size*0.5, size*0.5, size*0.62);
+      bg.addColorStop(0, 'rgba(10,14,28,1)');
+      bg.addColorStop(1, 'rgba(0,0,0,1)');
+      nctx.fillStyle = bg;
+      nctx.fillRect(0,0,size,size);
+
+      // colored clouds
+      nctx.globalCompositeOperation = 'lighter';
+      nctx.filter = 'blur(24px)';
+      const blobs = (perfMode === 'LOW') ? 22 : 34;
+      for (let i=0;i<blobs;i++){
+        const x = Math.random()*size;
+        const y = Math.random()*size;
+        const r = size*(0.12 + Math.random()*0.22);
+        const g = nctx.createRadialGradient(x,y, 0, x,y, r);
+        const pick = Math.random();
+        const col = (pick < 0.33) ? 'rgba(120,190,255,' : (pick < 0.66) ? 'rgba(200,120,255,' : 'rgba(120,255,220,';
+        g.addColorStop(0.0, col + (0.16 + Math.random()*0.18) + ')');
+        g.addColorStop(1.0, 'rgba(0,0,0,0)');
+        nctx.fillStyle = g;
+        nctx.beginPath();
+        nctx.arc(x,y,r,0,Math.PI*2);
+        nctx.fill();
+      }
+      nctx.filter = 'none';
+      nctx.globalCompositeOperation = 'source-over';
+    }
+
+    /***********************
+     * Starfield (typed arrays)
+     ***********************/
+    let N = 0;
+    let sx, sy, sz, spx, spy, sseed;
+    function initStars(){
+      N = starCountForMode();
+      sx = new Float32Array(N);
+      sy = new Float32Array(N);
+      sz = new Float32Array(N);
+      spx = new Float32Array(N);
+      spy = new Float32Array(N);
+      sseed = new Float32Array(N);
+
+      for (let i=0;i<N;i++){
+        resetStar(i, true);
+        sseed[i] = Math.random();
+      }
+    }
+
+    function resetStar(i, init=false){
+      // center-biased distribution
+      const a = Math.random()*Math.PI*2;
+      const r = Math.pow(Math.random(), 0.55); // more near center
+      const x = Math.cos(a)*r;
+      const y = Math.sin(a)*r*0.62;
+
+      sx[i] = x;
+      sy[i] = y;
+      sz[i] = init ? Math.random() : 1.0;
+
+      // set previous projection as current to avoid streak pop
+      const pr = project(x, y, Math.max(0.02, sz[i]));
+      spx[i] = pr.x;
+      spy[i] = pr.y;
+    }
+
+    function project(x, y, z){
+      // pseudo perspective projection
+      const s = Math.min(W, H) * 0.72;
+      const inv = 1.0 / z;
+      return {
+        x: W*0.5 + x*inv*s,
+        y: H*0.5 + y*inv*s
+      };
+    }
+
+    /***********************
+     * Particles (burst)
+     ***********************/
+    let burstActive = false;
+    let burstT0 = 0;
+    const P = CONFIG.BURST_PARTICLES;
+    const px = new Float32Array(P);
+    const py = new Float32Array(P);
+    const pvx = new Float32Array(P);
+    const pvy = new Float32Array(P);
+    const plife = new Float32Array(P);
+    function startBurst(){
+      burstActive = true;
+      burstT0 = performance.now()/1000;
+      for (let i=0;i<P;i++){
+        px[i] = W*0.5;
+        py[i] = H*0.5;
+        const a = Math.random()*Math.PI*2;
+        const u = (Math.random()*2-1);
+        const s = Math.sqrt(1-u*u);
+        // 2D projection of 3D-ish direction
+        const dx = Math.cos(a)*s;
+        const dy = u;
+        const sp = 220 + Math.random()*920;
+        pvx[i] = dx*sp;
+        pvy[i] = dy*sp;
+        plife[i] = 0.0;
+      }
+    }
+    function updateBurst(dt){
+      if (!burstActive) return;
+      const now = performance.now()/1000;
+      const t = now - burstT0;
+      const life = clamp01(t / CONFIG.BURST_DURATION);
+
+      const drag = 0.985;
+      for (let i=0;i<P;i++){
+        plife[i] = life;
+        pvx[i] *= drag;
+        pvy[i] *= drag;
+        px[i] += pvx[i]*dt;
+        py[i] += pvy[i]*dt;
+      }
+      if (life >= 1){
+        burstActive = false;
+      }
+    }
+
+    /***********************
+     * Cinematic state
+     ***********************/
+    let state = 'countdown'; // countdown | launch | post
+    let launchedOnce = false;
+
+    // transient intensities
+    let flash = 0.0;
+    let shake = 0.0;
+    let warpKick = 0.0;
+    let bloom = 0.0;  // just affects drawing intensity
+
+    let shockActive = false;
+    let shockT0 = 0;
+
+    function kickSmall(){
+      flash = Math.max(flash, 0.20);
+      shake = Math.max(shake, 0.14);
+      warpKick = Math.max(warpKick, 0.22);
+      bloom = Math.max(bloom, 0.18);
+    }
+    function kickBig(){
+      flash = Math.max(flash, 0.44);
+      shake = Math.max(shake, 0.32);
+      warpKick = Math.max(warpKick, 0.44);
+      bloom = Math.max(bloom, 0.40);
+    }
+    function kickFinal(){
+      flash = Math.max(flash, 0.68);
+      shake = Math.max(shake, 0.55);
+      warpKick = Math.max(warpKick, 0.85);
+      bloom = Math.max(bloom, 0.65);
+    }
+
+    function flashNow(op=0.85){
+      flashEl.style.transition = 'opacity .08s linear';
+      flashEl.style.opacity = String(op);
+      setTimeout(()=>{
+        flashEl.style.transition = 'opacity .22s linear';
+        flashEl.style.opacity = '0';
+      }, 80);
+    }
+
+    function beginLaunch(){
+      state = 'launch';
+      const now = performance.now()/1000;
+      shockActive = true;
+      shockT0 = now;
+
+      flashNow(0.92);
+      kickFinal();
+
+      // hide HUD with a tiny motion
+      hudEl.style.opacity = '0';
+      hudEl.style.transform = 'translate(-50%,-52%)';
+
+      // show launch text slightly later
+      setTimeout(()=> launchEl.classList.add('show'), 520);
+
+      // burst
+      setTimeout(()=> startBurst(), 240);
+    }
+
+    function forceTestLaunch(){
+      if (state === 'launch' || state === 'post') return;
+      launchedOnce = true;
+      beginLaunch();
+    }
+
+    /***********************
+     * Countdown update (robust even offline)
+     ***********************/
+    let lastSecond = null;
+    function updateDigits(parts){
+      const vals = {
+        d: String(parts.days).padStart(2,'0'),
+        h: pad2(parts.hours),
+        m: pad2(parts.minutes),
+        s: pad2(parts.seconds),
       };
 
-      function escapeHTML(str){
-        return String(str)
-          .replaceAll("&","&amp;")
-          .replaceAll("<","&lt;")
-          .replaceAll(">","&gt;")
-          .replaceAll('"',"&quot;")
-          .replaceAll("'","&#039;");
-      }
-
-      function getLang(){
-        return document.documentElement.getAttribute('data-lang') || 'ja';
-      }
-      function t(key){
-        const lang = getLang();
-        return (I18N[lang] && I18N[lang][key]) || (I18N.ja && I18N.ja[key]) || key;
-      }
-      function applyI18n(){
-        $$("[data-i18n]").forEach(el => {
-          const key = el.getAttribute("data-i18n");
-          const txt = t(key);
-          if (txt.includes("\n")) {
-            el.innerHTML = txt.split("\n").map(s => escapeHTML(s)).join("<br>");
-          } else {
-            el.textContent = txt;
-          }
-        });
-      }
-
-      function formatDate(dateStr){
-        if(!dateStr) return "";
-        return dateStr.replaceAll("-",".");
-      }
-
-      /* ------------------------------------------------------------------------
-        2) Settings (localStorage)
-      ------------------------------------------------------------------------ */
-      const SETTINGS_KEY = "rinty.settings";
-      function defaultSettings(){
-        return {
-          schemaVersion: 1,
-          theme: "light",
-          motion: true,
-          density: "standard",
-          language: "ja",
-          updatedAt: new Date().toISOString()
-        };
-      }
-      function loadSettings(){
-        try{
-          const raw = localStorage.getItem(SETTINGS_KEY);
-          if(!raw) return defaultSettings();
-          const parsed = JSON.parse(raw);
-          const base = defaultSettings();
-          return Object.assign(base, parsed || {}, { schemaVersion: 1 });
-        }catch(e){
-          return defaultSettings();
+      for (const id of ['d','h','m','s']){
+        const el = $(id);
+        if (el.textContent !== vals[id]){
+          el.textContent = vals[id];
+          el.classList.remove('flip');
+          // reflow to restart animation
+          void el.offsetWidth;
+          el.classList.add('flip');
         }
       }
-      function saveSettings(s){
-        try{
-          s.updatedAt = new Date().toISOString();
-          localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
-        }catch(e){}
+
+      // subtitle
+      $('subtitle').textContent = parts.done ? 'LAUNCHED' : CONFIG.SUBTITLE;
+
+      // debug line: show current JST time and remaining ms (useful when someone says "0のまま")
+      const now = Date.now();
+      const nowJst = new Date(now + CONFIG.TARGET_RULE.tzOffsetMinutes*60_000);
+      const yy = nowJst.getUTCFullYear();
+      const mm = pad2(nowJst.getUTCMonth()+1);
+      const dd = pad2(nowJst.getUTCDate());
+      const hh = pad2(nowJst.getUTCHours());
+      const mi = pad2(nowJst.getUTCMinutes());
+      const ss = pad2(nowJst.getUTCSeconds());
+      debugEl.textContent = `Now(JST): ${yy}/${mm}/${dd} ${hh}:${mi}:${ss}  |  Remaining(ms): ${parts.diff}`;
+    }
+
+    function tick(){
+      const p = getRemainingParts();
+
+      if (p.seconds !== lastSecond){
+        lastSecond = p.seconds;
+        updateDigits(p);
+
+        // cinematic triggers
+        if (!p.done){
+          if (p.seconds % 10 === 0) kickSmall();
+          if (p.seconds === 0) kickBig();
+
+          if (p.diff <= 30_000) kickBig();
+          if (p.diff <= 10_000) kickFinal();
+        }
       }
-      function applySettings(s){
-        const root = document.documentElement;
-        root.classList.toggle("theme-dark", s.theme === "dark");
-        root.classList.toggle("density-spacious", s.density === "spacious");
-        root.classList.toggle("motion-off", s.motion === false);
-        root.setAttribute("data-lang", s.language || "ja");
-        applyI18n();
-        if (s.motion === false){
-          $$(".reveal").forEach(el => el.classList.add("is-visible"));
+
+      if (p.done && !launchedOnce){
+        launchedOnce = true;
+        beginLaunch();
+      }
+    }
+    setInterval(tick, 120);
+    tick();
+
+    /***********************
+     * Draw loop (canvas)
+     ***********************/
+    let t0 = performance.now();
+    let prev = t0;
+
+    function drawNebula(t){
+      if (!nebula) return;
+      const drift = Math.sin(t*0.06)*0.5 + Math.cos(t*0.04)*0.5;
+      const s = 1.05 + 0.06*Math.sin(t*0.08);
+      const x = -W*0.05 + drift*14;
+      const y = -H*0.08 + drift*10;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.28 + bloom*0.15;
+      ctx.drawImage(nebula, x, y, W*s, H*s);
+      ctx.restore();
+    }
+
+    function drawStars(dt, warp, jitter){
+      // background clear with slight trail for motion blur
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = 'rgba(0,0,0,0.32)';
+      ctx.fillRect(0,0,W,H);
+      ctx.restore();
+
+      // draw nebula under
+      drawNebula((performance.now()-t0)/1000);
+
+      // stars
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      const w2 = W*0.5, h2 = H*0.5;
+      const baseAlpha = 0.62 + bloom*0.45;
+      const lineBoost = 1.0 + warp*1.2;
+
+      for (let i=0;i<N;i++){
+        // update depth
+        sz[i] -= (CONFIG.SPEED_BASE * (1.0 + warp*CONFIG.SPEED_MAX_BOOST)) * dt;
+        if (sz[i] <= 0.02){
+          resetStar(i, false);
+          continue;
+        }
+
+        const z = Math.max(0.02, sz[i]);
+        const pr = project(sx[i], sy[i], z);
+        const x = pr.x, y = pr.y;
+
+        // out of bounds -> respawn (keeps center tight)
+        if (x < -W*0.25 || x > W*1.25 || y < -H*0.25 || y > H*1.25){
+          resetStar(i, false);
+          continue;
+        }
+
+        const dx = x - spx[i];
+        const dy = y - spy[i];
+
+        const seed = sseed[i];
+        // color variant
+        let r=210,g=235,b=255;
+        if (seed < 0.33){ r=200; g=220; b=255; }
+        else if (seed < 0.66){ r=255; g=220; b=205; }
+        else { r=205; g=255; b=240; }
+
+        // brightness by depth
+        const depth = 1.0 - z;           // closer -> brighter
+        const a = (0.10 + depth*0.90) * baseAlpha;
+        const lw = (0.5 + depth*2.1) * lineBoost * (1.0 + jitter*0.35);
+
+        // streak: draw a line along motion
+        ctx.strokeStyle = `rgba(${r},${g},${b},${a})`;
+        ctx.lineWidth = lw;
+        ctx.beginPath();
+        ctx.moveTo(spx[i], spy[i]);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+
+        // core dot
+        ctx.fillStyle = `rgba(255,255,255,${a*0.85})`;
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(0.7, lw*0.55), 0, Math.PI*2);
+        ctx.fill();
+
+        spx[i] = x;
+        spy[i] = y;
+      }
+
+      ctx.restore();
+    }
+
+    function drawShockwave(t){
+      if (!shockActive) return;
+      const life = clamp01((t - shockT0) / 1.45);
+      const k = smoothstep(0,1,life);
+
+      const r = Math.min(W,H) * (0.06 + k*0.78);
+      const a = (1.0 - k) * 0.78;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineWidth = 2 + k*6;
+      const grad = ctx.createRadialGradient(W*0.5, H*0.5, r*0.2, W*0.5, H*0.5, r);
+      grad.addColorStop(0, `rgba(255,255,255,${a*0.0})`);
+      grad.addColorStop(0.6, `rgba(200,235,255,${a*0.55})`);
+      grad.addColorStop(1, `rgba(255,255,255,${a*0.0})`);
+      ctx.strokeStyle = grad;
+      ctx.beginPath();
+      ctx.arc(W*0.5, H*0.5, r, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+
+      if (life >= 1){
+        shockActive = false;
+      }
+    }
+
+    function drawBurst(){
+      if (!burstActive) return;
+      // draw particles
+      const now = performance.now()/1000;
+      const life = clamp01((now - burstT0) / CONFIG.BURST_DURATION);
+      const a = (1.0 - life);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i=0;i<P;i++){
+        const x = px[i], y = py[i];
+        const s = 1.0 + (1.0-life)*3.8;
+        const alpha = a*(0.45 + (i%7)*0.03);
+
+        ctx.fillStyle = `rgba(230,245,255,${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x,y, s, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function animate(){
+      const now = performance.now();
+      const dt = Math.min(0.05, (now - prev)/1000);
+      prev = now;
+      const t = now/1000;
+
+      // decay
+      flash = Math.max(0, flash - dt*1.9);
+      shake = Math.max(0, shake - dt*1.35);
+      warpKick = Math.max(0, warpKick - dt*1.2);
+      bloom = Math.max(0, bloom - dt*1.1);
+
+      // proximity intensity (last N minutes)
+      const p = getRemainingParts();
+      const win = CONFIG.INTENSIFY_WINDOW_MIN * 60_000;
+      const prox = (p.diff <= win) ? (1.0 - p.diff / win) : 0.0;
+      const proxPow = clamp01(prox*prox);
+
+      // warp base by proximity
+      let warp = 0.10 + proxPow*1.55 + warpKick*1.15;
+      if (p.diff <= 10_000 && !p.done) warp += CONFIG.FINAL_10S_BOOST * (1.0 - p.diff/10_000) * 0.95;
+
+      if (state === 'launch'){
+        // accelerate hard for ~1 sec after launch start
+        const s = smoothstep(shockT0, shockT0+0.9, t);
+        warp += 1.9 * s;
+        bloom = Math.max(bloom, 0.55*s);
+        flash = Math.max(flash, 0.25*s);
+        shake = Math.max(shake, 0.35*s);
+      }
+      if (state === 'post'){
+        warp = 0.32;
+      }
+      if (perfMode === 'LOW') warp *= 0.88;
+
+      // shake transform (whole stage)
+      const jit = clamp01(shake + flash*0.25);
+      const sxh = (Math.sin(t*29.0)+Math.sin(t*47.0)*0.6) * jit * 6.0;
+      const syh = (Math.cos(t*31.0)+Math.cos(t*41.0)*0.6) * jit * 5.0;
+      const rot = (Math.sin(t*18.0) * jit * 0.25);
+      stage.style.transform = `translate3d(${sxh}px,${syh}px,0) rotate(${rot}deg)`;
+
+      // flash overlay
+      const cssFlash = clamp01(flash*0.65 + (state==='launch' ? 0.18 : 0.0));
+      flashEl.style.opacity = String(cssFlash);
+
+      // vignette breath
+      vignetteEl.style.opacity = String(Math.min(1.0, 0.90 + prox*0.10 + bloom*0.08));
+
+      // star render
+      drawStars(dt, warp, jit);
+
+      // shockwave + burst on top
+      drawShockwave(t);
+      updateBurst(dt);
+      drawBurst();
+
+      requestAnimationFrame(animate);
+    }
+
+    /***********************
+     * Controls
+     ***********************/
+    async function toggleFullscreen(){
+      try{
+        if (!document.fullscreenElement){
+          await document.documentElement.requestFullscreen?.();
         } else {
-          Reveal.observe(document);
+          await document.exitFullscreen?.();
         }
+      }catch(e){
+        // In OBS browser source, fullscreen may be unsupported; show hint in debug
+        debugEl.textContent = 'Fullscreen is not available in this environment (OBSなど)。';
       }
+    }
 
-      /* ------------------------------------------------------------------------
-        3) Reveal
-      ------------------------------------------------------------------------ */
-      const Reveal = (function(){
-        let io = null;
-        function isMotionEnabled(){
-          return !document.documentElement.classList.contains("motion-off");
-        }
-        function ensure(){
-          if (io) return io;
-          io = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-              if(!entry.isIntersecting) return;
-              entry.target.classList.add("is-visible");
-              io.unobserve(entry.target);
-            });
-          }, { threshold: 0.18, rootMargin: "0px 0px -6% 0px" });
-          return io;
-        }
-        function observe(root=document){
-          if (!isMotionEnabled()){
-            root.querySelectorAll(".reveal").forEach(el => el.classList.add("is-visible"));
-            return;
-          }
-          const obs = ensure();
-          root.querySelectorAll(".reveal:not(.is-visible)").forEach(el => obs.observe(el));
-        }
-        return { observe };
-      })();
-
-      /* ------------------------------------------------------------------------
-        4) Repository（将来 Firestore へ差し替え）
-      ------------------------------------------------------------------------ */
-      const NewsRepository = {
-        list({ status="published" } = {}){
-          return NEWS_ARTICLES
-            .filter(a => (a.status || "published") === status)
-            .slice()
-            .sort((a,b) => b.date.localeCompare(a.date));
-        },
-        getBySlug(slug){
-          return NEWS_ARTICLES.find(a => a.slug === slug) || null;
-        },
-        latest(n=1){
-          return this.list().slice(0, n);
-        }
-      };
-
-      const ScheduleRepository = {
-        list({ status="published" } = {}){
-          return SCHEDULE_ITEMS
-            .filter(e => (e.status || "published") === status)
-            .slice()
-            .sort((a,b) => b.date.localeCompare(a.date));
-        },
-        upcoming(){
-          const today = new Date().toISOString().slice(0,10);
-          return this.list().filter(e => e.date >= today).sort((a,b) => a.date.localeCompare(b.date));
-        },
-        past(){
-          const today = new Date().toISOString().slice(0,10);
-          return this.list().filter(e => e.date < today).sort((a,b) => b.date.localeCompare(a.date));
-        }
-      };
-
-      /* ------------------------------------------------------------------------
-        5) App State
-      ------------------------------------------------------------------------ */
-      const state = {
-        view: "home",
-        news: { mode: "list", slug: null, listScrollY: 0 },
-        schedule: { filter: "upcoming" },
-        settings: loadSettings()
-      };
-
-      /* ------------------------------------------------------------------------
-        6) View Router（URL固定）
-      ------------------------------------------------------------------------ */
-      const views = $$(".view");
-      const navLinks = $$("[data-nav]");
-
-      function setActiveNav(viewName){
-        navLinks.forEach(a => {
-          const name = a.getAttribute("data-nav");
-          if (!name) return;
-          if (a.tagName.toLowerCase() === "a") {
-            a.setAttribute("aria-current", name === viewName ? "page" : "false");
-            if (name !== viewName) a.removeAttribute("aria-current");
-          }
-        });
-      }
-
-      function showView(name){
-        views.forEach(v => {
-          const isTarget = v.getAttribute("data-view") === name;
-          v.hidden = !isTarget;
-        });
-
-        const el = views.find(v => v.getAttribute("data-view") === name);
-        if (el && !document.documentElement.classList.contains("motion-off")){
-          el.classList.add("is-enter");
-          requestAnimationFrame(() => el.classList.remove("is-enter"));
-        }
-
-        if (name !== "news" || state.news.mode === "list"){
-          window.scrollTo({ top: 0, behavior: "auto" });
-        }
-
-        if (el) Reveal.observe(el);
-        setActiveNav(name);
-        state.view = name;
-      }
-
-      function go(name){
-        closeNav();
-        closeSettings();
-        showView(name);
-
-        if (name === "news"){
-          if (state.news.mode === "detail" && state.news.slug){
-            openNewsDetail(state.news.slug, { preserveScroll: true });
-          } else {
-            openNewsList({ preserveScroll: true });
-          }
-        }
-        if (name === "schedule"){
-          renderSchedule();
-        }
-      }
-
-      /* ------------------------------------------------------------------------
-        7) Rendering helpers
-      ------------------------------------------------------------------------ */
-      function renderRow({ date, badge, title, excerpt, onClick, delay=0 }){
-        const row = document.createElement("div");
-        row.className = "row reveal";
-        row.style.setProperty("--delay", `${delay}ms`);
-
-        const meta = document.createElement("div");
-        meta.className = "meta-row";
-        meta.innerHTML = `<span>${escapeHTML(formatDate(date))}</span> <span class="badge ${badge === "NEWS" ? "badge--accent" : ""}">${escapeHTML(badge)}</span>`;
-        row.appendChild(meta);
-
-        const btn = document.createElement("button");
-        btn.className = "row-btn";
-        btn.type = "button";
-        btn.addEventListener("click", onClick);
-
-        const titleEl = document.createElement("div");
-        titleEl.className = "row-title";
-        titleEl.textContent = title;
-
-        const excerptEl = document.createElement("div");
-        excerptEl.className = "row-excerpt";
-        excerptEl.textContent = excerpt || "";
-
-        btn.appendChild(titleEl);
-        if (excerpt) btn.appendChild(excerptEl);
-        row.appendChild(btn);
-
-        return row;
-      }
-
-      /* ------------------------------------------------------------------------
-        8) News (List / Detail)
-      ------------------------------------------------------------------------ */
-      const newsListPanel   = $("#news-list-panel");
-      const newsDetailPanel = $("#news-detail-panel");
-      const newsListEl      = $("#news-list");
-      const newsCountEl     = $("#news-count");
-      const newsDetailEl    = $("#news-detail");
-
-      function renderNewsList(){
-        const posts = NewsRepository.list();
-        newsCountEl.textContent = `${posts.length} posts`;
-        newsListEl.innerHTML = "";
-
-        posts.forEach((post, idx) => {
-          const row = renderRow({
-            date: post.date,
-            badge: post.category || "NEWS",
-            title: post.title,
-            excerpt: post.excerpt,
-            delay: Math.min(idx * 60, 180),
-            onClick: () => openNewsDetail(post.slug)
-          });
-          newsListEl.appendChild(row);
-        });
-
-        Reveal.observe(newsListEl);
-      }
-
-      function renderNewsDetail(slug){
-        const post = NewsRepository.getBySlug(slug);
-        newsDetailEl.innerHTML = "";
-
-        if (!post){
-          const box = document.createElement("div");
-          box.className = "empty";
-          box.textContent = t("common.none");
-          newsDetailEl.appendChild(box);
+    let wakeLock = null;
+    async function toggleWakeLock(){
+      try{
+        if (wakeLock){
+          await wakeLock.release();
+          wakeLock = null;
+          $('btnWake').textContent = 'Wake Lock (W)';
           return;
         }
-
-        const header = document.createElement("div");
-        header.innerHTML = `
-          <h1 tabindex="-1">${escapeHTML(post.title)}</h1>
-          <div class="article-meta">
-            <span>${escapeHTML(formatDate(post.date))}</span>
-            <span class="badge badge--accent">${escapeHTML(post.category || "NEWS")}</span>
-            ${post.updatedAt ? `<span>Updated: ${escapeHTML(formatDate(post.updatedAt))}</span>` : ""}
-          </div>
-          ${post.excerpt ? `<div class="article-excerpt">${escapeHTML(post.excerpt)}</div>` : ""}
-        `;
-        newsDetailEl.appendChild(header);
-
-        const body = document.createElement("div");
-        body.className = "article-body";
-
-        (post.body || []).forEach(block => {
-          if (block.type === "p"){
-            const p = document.createElement("p");
-            p.textContent = block.text || "";
-            body.appendChild(p);
-          }
-          if (block.type === "h2"){
-            const h2 = document.createElement("h2");
-            h2.textContent = block.text || "";
-            body.appendChild(h2);
-          }
-          if (block.type === "ul"){
-            const ul = document.createElement("ul");
-            (block.items || []).forEach(item => {
-              const li = document.createElement("li");
-              li.textContent = item;
-              ul.appendChild(li);
-            });
-            body.appendChild(ul);
-          }
-        });
-        newsDetailEl.appendChild(body);
-
-        if (post.links && post.links.length){
-          const actions = document.createElement("div");
-          actions.className = "article-actions";
-          post.links.forEach(l => {
-            const a = document.createElement("a");
-            a.className = "btn btn--ghost";
-            a.href = l.url;
-            a.target = "_blank";
-            a.rel = "noopener";
-            a.textContent = l.label;
-            actions.appendChild(a);
+        if ('wakeLock' in navigator){
+          wakeLock = await navigator.wakeLock.request('screen');
+          $('btnWake').textContent = 'Wake Lock: ON (W)';
+          wakeLock.addEventListener('release', ()=>{
+            wakeLock = null;
+            $('btnWake').textContent = 'Wake Lock (W)';
           });
-          newsDetailEl.appendChild(actions);
-        }
-
-        const titleEl = newsDetailEl.querySelector("h1");
-        titleEl && titleEl.focus({ preventScroll: true });
-      }
-
-      function openNewsList({ preserveScroll=false } = {}){
-        state.news.mode = "list";
-        state.news.slug = null;
-
-        newsDetailPanel.hidden = true;
-        newsListPanel.hidden = false;
-
-        renderNewsList();
-
-        if (!preserveScroll){
-          window.scrollTo({ top: 0, behavior: "auto" });
-        }
-      }
-
-      function openNewsDetail(slug, { preserveScroll=false } = {}){
-        if (state.news.mode === "list"){
-          state.news.listScrollY = window.scrollY;
-        }
-        state.news.mode = "detail";
-        state.news.slug = slug;
-
-        newsListPanel.hidden = true;
-        newsDetailPanel.hidden = false;
-
-        renderNewsDetail(slug);
-
-        if (!preserveScroll){
-          window.scrollTo({ top: 0, behavior: "auto" });
-        }
-        Reveal.observe(newsDetailPanel);
-      }
-
-      $$("[data-news-back]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          openNewsList({ preserveScroll: true });
-          window.scrollTo({ top: state.news.listScrollY || 0, behavior: "auto" });
-        });
-      });
-
-      /* ------------------------------------------------------------------------
-        9) Schedule
-      ------------------------------------------------------------------------ */
-      const scheduleListEl  = $("#schedule-list");
-      const scheduleCountEl = $("#schedule-count");
-      const scheduleUpdated = $("#schedule-updated");
-
-      function renderSchedule(){
-        const filter = state.schedule.filter;
-        scheduleUpdated.textContent = `Last updated: ${formatDate(new Date().toISOString().slice(0,10))}`;
-
-        const items = (filter === "upcoming") ? ScheduleRepository.upcoming() : ScheduleRepository.past();
-        scheduleCountEl.textContent = `${items.length} items`;
-        scheduleListEl.innerHTML = "";
-
-        if (!items.length){
-          const empty = document.createElement("div");
-          empty.className = "empty";
-          empty.innerHTML = `${escapeHTML(t("common.none"))}`;
-          scheduleListEl.appendChild(empty);
-          return;
-        }
-
-        items.forEach((item, idx) => {
-          const row = document.createElement("div");
-          row.className = "row reveal";
-          row.style.setProperty("--delay", `${Math.min(idx * 60, 180)}ms`);
-
-          const meta = document.createElement("div");
-          meta.className = "meta-row";
-          meta.innerHTML = `<span>${escapeHTML(formatDate(item.date))}</span> <span class="badge ${item.type === "LIVE" ? "" : "badge--accent"}">${escapeHTML(item.type)}</span>`;
-          row.appendChild(meta);
-
-          const wrap = document.createElement("div");
-
-          const title = document.createElement("div");
-          title.className = "row-title";
-          title.textContent = item.title;
-          wrap.appendChild(title);
-
-          const excerpt = document.createElement("div");
-          excerpt.className = "row-excerpt";
-          excerpt.textContent = [item.location, item.note].filter(Boolean).join(" / ");
-          wrap.appendChild(excerpt);
-
-          if (item.links && item.links.length){
-            const actions = document.createElement("div");
-            actions.style.marginTop = "10px";
-            actions.style.display = "flex";
-            actions.style.gap = "10px";
-            actions.style.flexWrap = "wrap";
-
-            item.links.slice(0, 2).forEach(l => {
-              const a = document.createElement("a");
-              a.className = "btn btn--ghost";
-              a.href = l.url;
-              a.target = "_blank";
-              a.rel = "noopener";
-              a.textContent = l.label;
-              actions.appendChild(a);
-            });
-
-            wrap.appendChild(actions);
-          }
-
-          row.appendChild(wrap);
-          scheduleListEl.appendChild(row);
-        });
-
-        Reveal.observe(scheduleListEl);
-      }
-
-      $$("[data-schedule-filter]").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const val = btn.getAttribute("data-schedule-filter");
-          state.schedule.filter = val;
-          $$("[data-schedule-filter]").forEach(b => {
-            b.setAttribute("aria-pressed", b.getAttribute("data-schedule-filter") === val ? "true" : "false");
-          });
-          renderSchedule();
-        });
-      });
-
-      /* ------------------------------------------------------------------------
-        10) Home previews
-      ------------------------------------------------------------------------ */
-      const homeNewsListEl     = $("#home-news-list");
-      const homeScheduleListEl = $("#home-schedule-list");
-      const heroLatestTextEl   = $("#hero-latest-text");
-
-      function renderHomeLatest(){
-        const latestNews = NewsRepository.latest(3);
-        homeNewsListEl.innerHTML = "";
-        latestNews.forEach((post, idx) => {
-          const row = renderRow({
-            date: post.date,
-            badge: post.category || "NEWS",
-            title: post.title,
-            excerpt: post.excerpt,
-            delay: Math.min(idx * 60, 180),
-            onClick: () => { go("news"); openNewsDetail(post.slug); }
-          });
-          homeNewsListEl.appendChild(row);
-        });
-        Reveal.observe(homeNewsListEl);
-
-        const upcoming = ScheduleRepository.upcoming().slice(0, 3);
-        homeScheduleListEl.innerHTML = "";
-        if (!upcoming.length){
-          const empty = document.createElement("div");
-          empty.className = "empty";
-          empty.textContent = t("common.none");
-          homeScheduleListEl.appendChild(empty);
         } else {
-          upcoming.forEach((item, idx) => {
-            const row = document.createElement("div");
-            row.className = "row reveal";
-            row.style.setProperty("--delay", `${Math.min(idx * 60, 180)}ms`);
-
-            const meta = document.createElement("div");
-            meta.className = "meta-row";
-            meta.innerHTML = `<span>${escapeHTML(formatDate(item.date))}</span> <span class="badge ${item.type === "LIVE" ? "" : "badge--accent"}">${escapeHTML(item.type)}</span>`;
-            row.appendChild(meta);
-
-            const btn = document.createElement("button");
-            btn.className = "row-btn";
-            btn.type = "button";
-            btn.addEventListener("click", () => {
-              go("schedule");
-              state.schedule.filter = "upcoming";
-              $$("[data-schedule-filter]").forEach(b => {
-                b.setAttribute("aria-pressed", b.getAttribute("data-schedule-filter") === "upcoming" ? "true" : "false");
-              });
-              renderSchedule();
-            });
-
-            const title = document.createElement("div");
-            title.className = "row-title";
-            title.textContent = item.title;
-
-            const excerpt = document.createElement("div");
-            excerpt.className = "row-excerpt";
-            excerpt.textContent = item.location || "";
-
-            btn.appendChild(title);
-            btn.appendChild(excerpt);
-
-            row.appendChild(btn);
-            homeScheduleListEl.appendChild(row);
-          });
+          $('btnWake').textContent = 'WakeLock: N/A';
         }
-        Reveal.observe(homeScheduleListEl);
-
-        const latestOne = NewsRepository.latest(1)[0];
-        if (latestOne){
-          heroLatestTextEl.textContent = `${formatDate(latestOne.date)}｜${latestOne.title}`;
-          const latestBtn = $("[data-open-latest-news]");
-          latestBtn && latestBtn.addEventListener("click", () => {
-            go("news");
-            openNewsDetail(latestOne.slug);
-          }, { once: true });
-        } else {
-          heroLatestTextEl.textContent = t("common.none");
-        }
+      }catch(e){
+        $('btnWake').textContent = 'WakeLock: DENIED';
       }
+    }
 
-      /* ------------------------------------------------------------------------
-        11) Settings Drawer
-      ------------------------------------------------------------------------ */
-      const settingsOverlay = $(".settings-overlay");
-      const settingsDrawer  = $(".settings-drawer");
-      const settingsStatus  = $("#settings-status");
-      const languageSelect = $("#language-select");
-      let lastFocused = null;
+    let hudVisible = true;
+    function toggleHud(){
+      hudVisible = !hudVisible;
+      hudEl.style.opacity = hudVisible ? '1' : '0';
+    }
 
-      function syncSettingsUI(){
-        const s = state.settings;
-        $$("[data-set-theme]").forEach(btn => {
-          btn.setAttribute("aria-pressed", btn.getAttribute("data-set-theme") === s.theme ? "true" : "false");
-        });
-        const motionToggle = $("[data-toggle-motion]");
-        motionToggle.setAttribute("aria-checked", s.motion ? "true" : "false");
-        $$("[data-set-density]").forEach(btn => {
-          btn.setAttribute("aria-pressed", btn.getAttribute("data-set-density") === s.density ? "true" : "false");
-        });
-        languageSelect.value = s.language || "ja";
-        settingsStatus.textContent = `Saved`;
+    function togglePerf(){
+      if (perfMode === 'AUTO') perfMode = 'LOW';
+      else if (perfMode === 'LOW') perfMode = 'HIGH';
+      else perfMode = 'AUTO';
+      setPerfButton();
+      // rebuild
+      resize();
+      initStars();
+    }
+
+    $('btnFullscreen').addEventListener('click', toggleFullscreen);
+    $('btnWake').addEventListener('click', toggleWakeLock);
+    $('btnHud').addEventListener('click', toggleHud);
+    $('btnPerf').addEventListener('click', togglePerf);
+    $('btnTest').addEventListener('click', forceTestLaunch);
+
+    window.addEventListener('keydown', (e)=>{
+      const k = e.key.toLowerCase();
+      if (k === 'f') toggleFullscreen();
+      if (k === 'w') toggleWakeLock();
+      if (k === 'h') toggleHud();
+      if (k === 'p') togglePerf();
+      if (k === 't') forceTestLaunch();
+    });
+
+    /***********************
+     * Launch state transition to POST
+     ***********************/
+    const postWatcher = setInterval(()=>{
+      if (state !== 'launch') return;
+      const now = performance.now()/1000;
+      if ((now - shockT0) > 3.3){
+        state = 'post';
+        // keep launch text visible, keep HUD hidden
       }
+    }, 250);
 
-      function updateSetting(partial){
-        state.settings = Object.assign({}, state.settings, partial);
-        saveSettings(state.settings);
-        applySettings(state.settings);
-        syncSettingsUI();
-      }
+    /***********************
+     * Boot
+     ***********************/
+    resize();
+    initStars();
 
-      function openSettings(){
-        closeNav();
-        lastFocused = document.activeElement;
+    // fill once (avoid initial black frame)
+    ctx.setTransform(scaleX,0,0,scaleY,0,0);
+    ctx.fillStyle = 'rgba(0,0,0,1)';
+    ctx.fillRect(0,0,W,H);
 
-        document.body.classList.add("settings-open");
-        document.body.style.overflow = "hidden";
-
-        settingsOverlay.hidden = false;
-        settingsDrawer.hidden = false;
-
-        syncSettingsUI();
-        const closeBtn = $("[data-close-settings]");
-        closeBtn && closeBtn.focus({ preventScroll: true });
-      }
-
-      function closeSettings(){
-        if (!document.body.classList.contains("settings-open")) return;
-        document.body.classList.remove("settings-open");
-        document.body.style.overflow = "";
-
-        window.setTimeout(() => {
-          if (!document.body.classList.contains("settings-open")){
-            settingsOverlay.hidden = true;
-            settingsDrawer.hidden = true;
-          }
-        }, 240);
-
-        if (lastFocused && typeof lastFocused.focus === "function"){
-          lastFocused.focus({ preventScroll: true });
-        }
-      }
-
-      $$("[data-open-settings]").forEach(el => el.addEventListener("click", openSettings));
-      settingsOverlay.addEventListener("click", closeSettings);
-      $("[data-close-settings]").addEventListener("click", closeSettings);
-
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape"){
-          if (document.body.classList.contains("settings-open")) closeSettings();
-          if (document.body.classList.contains("nav-open")) closeNav();
-        }
-      });
-
-      // Focus trap（簡易）
-      document.addEventListener("keydown", (e) => {
-        if (e.key !== "Tab") return;
-        if (!document.body.classList.contains("settings-open")) return;
-
-        const focusables = $$('button, [href], select, [tabindex]:not([tabindex="-1"])', settingsDrawer)
-          .filter(el => !el.disabled && el.offsetParent !== null);
-
-        if (!focusables.length) return;
-        const first = focusables[0];
-        const last  = focusables[focusables.length - 1];
-
-        if (e.shiftKey && document.activeElement === first){
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last){
-          e.preventDefault();
-          first.focus();
-        }
-      });
-
-      $$("[data-set-theme]").forEach(btn => btn.addEventListener("click", () => updateSetting({ theme: btn.getAttribute("data-set-theme") })));
-      $("[data-toggle-motion]").addEventListener("click", () => updateSetting({ motion: !state.settings.motion }));
-      $$("[data-set-density]").forEach(btn => btn.addEventListener("click", () => updateSetting({ density: btn.getAttribute("data-set-density") })));
-      languageSelect.addEventListener("change", () => updateSetting({ language: languageSelect.value }));
-      $("[data-reset-settings]").addEventListener("click", () => {
-        state.settings = defaultSettings();
-        saveSettings(state.settings);
-        applySettings(state.settings);
-        syncSettingsUI();
-        settingsStatus.textContent = "Reset";
-      });
-
-      /* ------------------------------------------------------------------------
-        12) Mobile Nav
-      ------------------------------------------------------------------------ */
-      const navToggle = $(".nav-toggle");
-      const navOverlay = $(".nav-overlay");
-      const navDrawer  = $(".nav-drawer");
-      const navClose = $(".nav-close");
-
-      function openNav(){
-        closeSettings();
-        document.body.classList.add("nav-open");
-        navOverlay.hidden = false;
-        navDrawer.hidden  = false;
-        navToggle.setAttribute("aria-expanded", "true");
-        navClose.focus({ preventScroll: true });
-      }
-
-      function closeNav(){
-        if (!document.body.classList.contains("nav-open")) return;
-        document.body.classList.remove("nav-open");
-        navToggle.setAttribute("aria-expanded", "false");
-
-        window.setTimeout(() => {
-          if (!document.body.classList.contains("nav-open")){
-            navOverlay.hidden = true;
-            navDrawer.hidden  = true;
-          }
-        }, 240);
-      }
-
-      navToggle.addEventListener("click", () => {
-        document.body.classList.contains("nav-open") ? closeNav() : openNav();
-      });
-      navOverlay.addEventListener("click", closeNav);
-      navClose.addEventListener("click", closeNav);
-
-      /* ------------------------------------------------------------------------
-        13) Navigation events (SPA)
-      ------------------------------------------------------------------------ */
-      function bindNav(){
-        $$("[data-nav]").forEach(el => {
-          el.addEventListener("click", (e) => {
-            if (document.documentElement.classList.contains("js")) e.preventDefault();
-            const target = el.getAttribute("data-nav");
-            if (!target) return;
-            go(target);
-          });
-        });
-
-        document.addEventListener("click", (e) => {
-          const btn = e.target.closest("[data-go]");
-          if (!btn) return;
-          const target = btn.getAttribute("data-go");
-          if (!target) return;
-          go(target);
-        });
-      }
-
-      /* ------------------------------------------------------------------------
-        14) Init
-      ------------------------------------------------------------------------ */
-      function init(){
-        $("#year").textContent = new Date().getFullYear();
-
-        applySettings(state.settings);
-        applyI18n();
-
-        renderHomeLatest();
-        renderNewsList();
-        renderSchedule();
-
-        const hash = location.hash.replace("#","");
-        const initial = (hash === "news" || hash === "schedule" || hash === "home") ? hash : "home";
-        if (initial !== "home") {
-          try { history.replaceState(null, "", location.pathname + location.search); } catch(e){}
-        }
-        showView(initial);
-
-        bindNav();
-
-        document.body.classList.add("is-ready");
-        Reveal.observe(document);
-      }
-
-      if (document.readyState === "loading"){
-        document.addEventListener("DOMContentLoaded", init);
-      } else {
-        init();
-      }
-    })();
+    requestAnimationFrame(animate);
   </script>
 </body>
 </html>
